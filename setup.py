@@ -47,6 +47,7 @@ setup(
     keywords=["nlp"],
     description=info.description,
     long_description=readme,
+    long_description_content_type="text/markdown",
     url=info.repo,
     download_url=info.download_url,
     author=" and ".join(info.authors),
