@@ -1,12 +1,12 @@
 import random
 from collections import defaultdict
-from typing import Optional
+from typing import Optional, List, Text
 from .queryast import *
 
 # type alias
-Vocabularies = dict[str, list[str]]
+Vocabularies = dict[Text, List[Text]]
 
-def path_from_root(target: AstNode, vocabularies: Optional[Vocabularies] = None) -> list[AstNode]:
+def path_from_root(target: AstNode, vocabularies: Optional[Vocabularies] = None) -> List[AstNode]:
     """
     Returns the sequence of transitions from the root of the search tree
     to the specified AstNode.

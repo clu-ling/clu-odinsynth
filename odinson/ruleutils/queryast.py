@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import json
-from typing import Optional, Type, Union
+from typing import Dict, List, Optional, Type, Text, Union
 from . import config
 
 
@@ -27,7 +27,7 @@ __all__ = [
 
 
 # type alias
-Vocabularies = dict[str, list[str]]
+Vocabularies = Dict[Text, List[Text]]
 
 
 class AstNode:
@@ -52,10 +52,10 @@ class AstNode:
         """Returns true if the pattern is valid, i.e., has no holes."""
         return not self.has_holes()
 
-    def tokens(self) -> list[str]:
+    def tokens(self) -> List[Text]:
         """Returns the pattern as a list of tokens."""
         # default implementation is intended for nodes that have no children
-        return [str(self)]
+        return [Text(self)]
 
     def num_matcher_holes(self) -> int:
         """Returns the number of matcher holes in this pattern."""
@@ -73,7 +73,7 @@ class AstNode:
         """Returns the number of holes in this pattern."""
         return self.num_matcher_holes() + self.num_constraint_holes() + self.num_surface_holes()
 
-    def expand_leftmost_hole(self, vocabularies: Vocabularies) -> list[AstNode]:
+    def expand_leftmost_hole(self, vocabularies: Vocabularies) -> List[AstNode]:
         """
         If the pattern has holes then it returns the patterns obtained
         by expanding the leftmost hole.  If there are no holes then it
@@ -82,7 +82,7 @@ class AstNode:
         # default implementation is suitable for Matchers only
         return []
 
-    def preorder_traversal(self) -> list[AstNode]:
+    def preorder_traversal(self) -> List[AstNode]:
         """Returns a list with all the nodes of the tree in preorder."""
         # default implementation is for nodes that have no children
         return [self]
@@ -101,7 +101,7 @@ def maybe_parens(node: AstNode, types: Types) -> str:
     if node is subclass of provided types."""
     return f'({node})' if isinstance(node, types) else str(node)
 
-def maybe_parens_tokens(node: AstNode, types: Types) -> list[str]:
+def maybe_parens_tokens(node: AstNode, types: Types) -> List[Text]:
     """Converts node to list of tokens. Surrounds by parenthesis
     if node is subclass of provided types."""
     return ['(', *node.tokens(), ')'] if isinstance(node, types) else node.tokens()
@@ -111,7 +111,7 @@ def make_quantifier(min: int, max: Optional[int]) -> str:
     and returns the appropriate quantifier."""
     return ''.join(make_quantifier_tokens(min, max))
 
-def make_quantifier_tokens(min: int, max: Optional[int]) -> list[str]:
+def make_quantifier_tokens(min: int, max: Optional[int]) -> List[Text]:
     """Gets the desired minimum and maximum repetitions
     and returns the sequence of tokens corresponding
     to the appropriate quantifier."""

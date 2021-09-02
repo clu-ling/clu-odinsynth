@@ -1,3 +1,5 @@
-# ruleutils
+# odinson-ruleutils
 
-Python library to manipulate rules.
+## Build
+
+```docker build -f Dockerfile -t parsertongue/odinson-ruleutils:latest .```
