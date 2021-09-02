@@ -26,7 +26,7 @@ with open("README.md", "r") as f:
 test_deps = required + ["green>=2.5.0", "coverage", "mypy"]
 # NOTE: <packagename> @ allows installation of git-based URLs
 dev_deps = test_deps + [
-    "black @ git+git://github.com/psf/black.git",
+    "black",
     "mkdocs==1.2.1",
     # "portray @ git+git://github.com/myedibleenso/portray.git@issue/83",
     # "portray @ git+git://github.com/myedibleenso/portray.git@avoid-regressions",
