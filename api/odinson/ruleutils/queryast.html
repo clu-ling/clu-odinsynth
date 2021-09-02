@@ -1,0 +1,1885 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.2" />
+<title>odinson.ruleutils.queryast API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML" integrity="sha256-kZafAc6mZvK3W3v1pHOcUix30OHQN6pU/NO2oFkqZVw=" crossorigin></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>odinson.ruleutils.queryast</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">from __future__ import annotations
+
+import re
+import json
+from typing import Dict, List, Optional, Text, Tuple, Type, Union
+from odinson.ruleutils import config
+
+
+__all__ = [
+    &#34;AstNode&#34;,
+    &#34;Matcher&#34;,
+    &#34;HoleMatcher&#34;,
+    &#34;ExactMatcher&#34;,
+    &#34;Constraint&#34;,
+    &#34;HoleConstraint&#34;,
+    &#34;FieldConstraint&#34;,
+    &#34;OrConstraint&#34;,
+    &#34;AndConstraint&#34;,
+    &#34;NotConstraint&#34;,
+    &#34;Surface&#34;,
+    &#34;HoleSurface&#34;,
+    &#34;TokenSurface&#34;,
+    &#34;ConcatSurface&#34;,
+    &#34;OrSurface&#34;,
+    &#34;RepeatSurface&#34;,
+]
+
+
+# type alias
+Vocabularies = Dict[Text, List[Text]]
+
+
+class AstNode:
+    &#34;&#34;&#34;The base class for all AST nodes.&#34;&#34;&#34;
+
+    def __repr__(self):
+        return f&#34;&lt;{self.__class__.__name__}: {self}&gt;&#34;
+
+    def is_hole(self) -&gt; bool:
+        &#34;&#34;&#34;Returns true if the node is a hole.&#34;&#34;&#34;
+        # most nodes are not holes,
+        # so only the Hole* nodes need to override this
+        return False
+
+    def has_holes(self) -&gt; bool:
+        &#34;&#34;&#34;Returns true if the pattern has one or more holes.&#34;&#34;&#34;
+        # most nodes need to override this to handle their children,
+        # so the default implementation is intended for Hole* nodes
+        return self.is_hole()
+
+    def is_valid(self) -&gt; bool:
+        &#34;&#34;&#34;Returns true if the pattern is valid, i.e., has no holes.&#34;&#34;&#34;
+        return not self.has_holes()
+
+    def tokens(self) -&gt; List[Text]:
+        &#34;&#34;&#34;Returns the pattern as a list of tokens.&#34;&#34;&#34;
+        # default implementation is intended for nodes that have no children
+        return [Text(self)]
+
+    def num_matcher_holes(self) -&gt; int:
+        &#34;&#34;&#34;Returns the number of matcher holes in this pattern.&#34;&#34;&#34;
+        return 0
+
+    def num_constraint_holes(self) -&gt; int:
+        &#34;&#34;&#34;Returns the number of constraint holes in this pattern.&#34;&#34;&#34;
+        return 0
+
+    def num_surface_holes(self) -&gt; int:
+        &#34;&#34;&#34;Returns the number of surface holes in this pattern.&#34;&#34;&#34;
+        return 0
+
+    def num_holes(self) -&gt; int:
+        &#34;&#34;&#34;Returns the number of holes in this pattern.&#34;&#34;&#34;
+        return (
+            self.num_matcher_holes()
+            + self.num_constraint_holes()
+            + self.num_surface_holes()
+        )
+
+    def expand_leftmost_hole(self, vocabularies: Vocabularies) -&gt; List[AstNode]:
+        &#34;&#34;&#34;
+        If the pattern has holes then it returns the patterns obtained
+        by expanding the leftmost hole.  If there are no holes then it
+        returns an empty list.
+        &#34;&#34;&#34;
+        # default implementation is suitable for Matchers only
+        return []
+
+    def preorder_traversal(self) -&gt; List[AstNode]:
+        &#34;&#34;&#34;Returns a list with all the nodes of the tree in preorder.&#34;&#34;&#34;
+        # default implementation is for nodes that have no children
+        return [self]
+
+
+# type alias
+Types = Type[Union[AstNode, Tuple[AstNode]]]
+
+
+def is_identifier(s: Text) -&gt; bool:
+    &#34;&#34;&#34;returns true if the provided string is a valid identifier&#34;&#34;&#34;
+    return config.IDENT_RE.match(s) is not None
+
+
+def maybe_parens(node: AstNode, types: Types) -&gt; str:
+    &#34;&#34;&#34;Converts node to string. Surrounds by parenthesis
+    if node is subclass of provided types.&#34;&#34;&#34;
+    return f&#34;({node})&#34; if isinstance(node, types) else str(node)
+
+
+def maybe_parens_tokens(node: AstNode, types: Types) -&gt; List[Text]:
+    &#34;&#34;&#34;Converts node to list of tokens. Surrounds by parenthesis
+    if node is subclass of provided types.&#34;&#34;&#34;
+    return [&#34;(&#34;, *node.tokens(), &#34;)&#34;] if isinstance(node, types) else node.tokens()
+
+
+def make_quantifier(min: int, max: Optional[int]) -&gt; str:
+    &#34;&#34;&#34;Gets the desired minimum and maximum repetitions
+    and returns the appropriate quantifier.&#34;&#34;&#34;
+    return &#34;&#34;.join(make_quantifier_tokens(min, max))
+
+
+def make_quantifier_tokens(min: int, max: Optional[int]) -&gt; List[Text]:
+    &#34;&#34;&#34;Gets the desired minimum and maximum repetitions
+    and returns the sequence of tokens corresponding
+    to the appropriate quantifier.&#34;&#34;&#34;
+    if min == max:
+        return [&#34;{&#34;, str(min), &#34;}&#34;]
+    if max == None:
+        if min == 0:
+            return [&#34;*&#34;]
+        elif min == 1:
+            return [&#34;+&#34;]
+        else:
+            return [&#34;{&#34;, str(min), &#34;,&#34;, &#34;}&#34;]
+    if min == 0:
+        if max == 1:
+            return [&#34;?&#34;]
+        else:
+            return [&#34;{&#34;, &#34;,&#34;, str(max), &#34;}&#34;]
+    return [&#34;{&#34;, str(min), &#34;,&#34;, str(max), &#34;}&#34;]
+
+
+####################
+# string matchers
+####################
+
+
+class Matcher(AstNode):
+    pass
+
+
+class HoleMatcher(Matcher):
+    def __str__(self):
+        return config.HOLE_GLYPH
+
+    def __eq__(self, value):
+        return isinstance(value, HoleMatcher)
+
+    def is_hole(self):
+        return True
+
+    def num_matcher_holes(self):
+        return 1
+
+
+class ExactMatcher(Matcher):
+    def __init__(self, s: Text):
+        self.string = s
+
+    def __str__(self):
+        if is_identifier(self.string):
+            # don&#39;t surround identifiers with quotes
+            return self.string
+        else:
+            return json.dumps(self.string)
+
+    def __eq__(self, value):
+        return isinstance(value, ExactMatcher) and self.string == value.string
+
+
+####################
+# token constraints
+####################
+
+
+class Constraint(AstNode):
+    pass
+
+
+class HoleConstraint(Constraint):
+    def __str__(self):
+        return config.HOLE_GLYPH
+
+    def __eq__(self, value):
+        return isinstance(value, HoleConstraint)
+
+    def is_hole(self):
+        return True
+
+    def num_constraint_holes(self):
+        return 1
+
+    def expand_leftmost_hole(self, vocabularies):
+        return [
+            FieldConstraint(HoleMatcher(), HoleMatcher()),
+            NotConstraint(HoleConstraint()),
+            AndConstraint(HoleConstraint(), HoleConstraint()),
+            OrConstraint(HoleConstraint(), HoleConstraint()),
+        ]
+
+
+class FieldConstraint(Constraint):
+    def __init__(self, name: Matcher, value: Matcher):
+        self.name = name
+        self.value = value
+
+    def __str__(self):
+        return f&#34;{self.name}={self.value}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, FieldConstraint)
+            and self.name == value.name
+            and self.value == value.value
+        )
+
+    def has_holes(self):
+        return self.name.has_holes() or self.value.has_holes()
+
+    def tokens(self):
+        return self.name.tokens() + [&#34;=&#34;] + self.value.tokens()
+
+    def num_matcher_holes(self):
+        return self.name.num_matcher_holes() + self.value.num_matcher_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.name.is_hole():
+            return [FieldConstraint(ExactMatcher(k), self.value) for k in vocabularies]
+        elif self.value.is_hole():
+            return [
+                FieldConstraint(self.name, ExactMatcher(v))
+                for v in vocabularies[self.name.string]
+            ]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return (
+            super().preorder_traversal()
+            + self.name.preorder_traversal()
+            + self.value.preorder_traversal()
+        )
+
+
+class NotConstraint(Constraint):
+    def __init__(self, c: Constraint):
+        self.constraint = c
+
+    def __str__(self):
+        c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
+        return f&#34;!{c}&#34;
+
+    def __eq__(self, value):
+        return isinstance(value, NotConstraint) and self.constraint == value.constraint
+
+    def has_holes(self):
+        return self.constraint.has_holes()
+
+    def tokens(self):
+        return [&#34;!&#34;] + maybe_parens_tokens(
+            self.constraint, (AndConstraint, OrConstraint)
+        )
+
+    def num_matcher_holes(self):
+        return self.constraint.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.constraint.num_constraint_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        # get the next nodes for the nested constraint
+        nodes = self.constraint.expand_leftmost_hole(vocabularies)
+        # avoid nesting negations
+        return [NotConstraint(n) for n in nodes if not isinstance(n, NotConstraint)]
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.constraint.preorder_traversal()
+
+
+class AndConstraint(Constraint):
+    def __init__(self, lhs: Constraint, rhs: Constraint):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __str__(self):
+        return f&#34;{self.lhs} &amp; {self.rhs}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, AndConstraint)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
+        )
+
+    def has_holes(self):
+        return self.lhs.has_holes() or self.rhs.has_holes()
+
+    def tokens(self):
+        tokens = []
+        tokens += maybe_parens_tokens(self.lhs, OrConstraint)
+        tokens.append(&#34;&amp;&#34;)
+        tokens += maybe_parens_tokens(self.rhs, OrConstraint)
+        return tokens
+
+    def num_matcher_holes(self):
+        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.lhs.has_holes():
+            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            return [AndConstraint(n, self.rhs) for n in nodes]
+        elif self.rhs.has_holes():
+            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            return [AndConstraint(self.lhs, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )
+
+
+class OrConstraint(Constraint):
+    def __init__(self, lhs: Constraint, rhs: Constraint):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __str__(self):
+        return f&#34;{self.lhs} | {self.rhs}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, OrConstraint)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
+        )
+
+    def has_holes(self):
+        return self.lhs.has_holes() or self.rhs.has_holes()
+
+    def tokens(self):
+        return [*self.lhs.tokens(), &#34;|&#34;, *self.rhs.tokens()]
+
+    def num_matcher_holes(self):
+        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.lhs.has_holes():
+            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            return [OrConstraint(n, self.rhs) for n in nodes]
+        elif self.rhs.has_holes():
+            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            return [OrConstraint(self.lhs, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )
+
+
+####################
+# surface patterns
+####################
+
+
+class Surface(AstNode):
+    pass
+
+
+class HoleSurface(Surface):
+    def __str__(self):
+        return config.HOLE_GLYPH
+
+    def __eq__(self, value):
+        return isinstance(value, HoleSurface)
+
+    def is_hole(self):
+        return True
+
+    def num_surface_holes(self):
+        return 1
+
+    def expand_leftmost_hole(self, vocabularies):
+        return [
+            TokenSurface(HoleConstraint()),
+            ConcatSurface(HoleSurface(), HoleSurface()),
+            OrSurface(HoleSurface(), HoleSurface()),
+            RepeatSurface(HoleSurface(), 0, 1),
+            RepeatSurface(HoleSurface(), 0, None),
+            RepeatSurface(HoleSurface(), 1, None),
+        ]
+
+
+class TokenSurface(Surface):
+    def __init__(self, c: Constraint):
+        self.constraint = c
+
+    def __str__(self):
+        return f&#34;[{self.constraint}]&#34;
+
+    def __eq__(self, value):
+        return isinstance(value, TokenSurface) and self.constraint == value.constraint
+
+    def has_holes(self):
+        return self.constraint.has_holes()
+
+    def tokens(self):
+        return [&#34;[&#34;, *self.constraint.tokens(), &#34;]&#34;]
+
+    def num_matcher_holes(self):
+        return self.constraint.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.constraint.num_constraint_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        nodes = self.constraint.expand_leftmost_hole(vocabularies)
+        return [TokenSurface(n) for n in nodes]
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.constraint.preorder_traversal()
+
+
+class ConcatSurface(Surface):
+    def __init__(self, lhs: Surface, rhs: Surface):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __str__(self):
+        lhs = maybe_parens(self.lhs, OrSurface)
+        rhs = maybe_parens(self.rhs, OrSurface)
+        return f&#34;{lhs} {rhs}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, ConcatSurface)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
+        )
+
+    def has_holes(self):
+        return self.lhs.has_holes() or self.rhs.has_holes()
+
+    def tokens(self):
+        tokens = []
+        tokens += maybe_parens_tokens(self.lhs, OrSurface)
+        tokens += maybe_parens_tokens(self.rhs, OrSurface)
+        return tokens
+
+    def num_matcher_holes(self):
+        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
+
+    def num_surface_holes(self):
+        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.lhs.has_holes():
+            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            return [ConcatSurface(n, self.rhs) for n in nodes]
+        elif self.rhs.has_holes():
+            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            return [ConcatSurface(self.lhs, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )
+
+
+class OrSurface(Surface):
+    def __init__(self, lhs: Surface, rhs: Surface):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __str__(self):
+        return f&#34;{self.lhs} | {self.rhs}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, OrSurface)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
+        )
+
+    def has_holes(self):
+        return self.lhs.has_holes() or self.rhs.has_holes()
+
+    def tokens(self):
+        return [*self.lhs.tokens(), &#34;|&#34;, *self.rhs.tokens()]
+
+    def num_matcher_holes(self):
+        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
+
+    def num_surface_holes(self):
+        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.lhs.has_holes():
+            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            return [OrSurface(n, self.rhs) for n in nodes]
+        elif self.rhs.has_holes():
+            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            return [OrSurface(self.lhs, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )
+
+
+class RepeatSurface(Surface):
+    def __init__(self, surf: Surface, min: int, max: Optional[int]):
+        self.surf = surf
+        self.min = min
+        self.max = max
+
+    def __str__(self):
+        surf = maybe_parens(self.surf, (ConcatSurface, OrSurface))
+        quant = make_quantifier(self.min, self.max)
+        return f&#34;{surf}{quant}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, RepeatSurface)
+            and self.surf == value.surf
+            and self.min == value.min
+            and self.max == value.max
+        )
+
+    def has_holes(self):
+        return self.surf.has_holes()
+
+    def tokens(self):
+        tokens = []
+        tokens += maybe_parens_tokens(self.surf, (ConcatSurface, OrSurface))
+        tokens += make_quantifier_tokens(self.min, self.max)
+        return tokens
+
+    def num_matcher_holes(self):
+        return self.surf.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.surf.num_constraint_holes()
+
+    def num_surface_holes(self):
+        return self.surf.num_surface_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        nodes = self.surf.expand_leftmost_hole(vocabularies)
+        # avoid nesting repetitions
+        nodes = [n for n in nodes if not isinstance(n, RepeatSurface)]
+        return [RepeatSurface(n, self.min, self.max) for n in nodes]
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.surf.preorder_traversal()</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="odinson.ruleutils.queryast.AndConstraint"><code class="flex name class">
+<span>class <span class="ident">AndConstraint</span></span>
+<span>(</span><span>lhs: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>, rhs: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class AndConstraint(Constraint):
+    def __init__(self, lhs: Constraint, rhs: Constraint):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __str__(self):
+        return f&#34;{self.lhs} &amp; {self.rhs}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, AndConstraint)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
+        )
+
+    def has_holes(self):
+        return self.lhs.has_holes() or self.rhs.has_holes()
+
+    def tokens(self):
+        tokens = []
+        tokens += maybe_parens_tokens(self.lhs, OrConstraint)
+        tokens.append(&#34;&amp;&#34;)
+        tokens += maybe_parens_tokens(self.rhs, OrConstraint)
+        return tokens
+
+    def num_matcher_holes(self):
+        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.lhs.has_holes():
+            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            return [AndConstraint(n, self.rhs) for n in nodes]
+        elif self.rhs.has_holes():
+            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            return [AndConstraint(self.lhs, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Constraint.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode"><code class="flex name class">
+<span>class <span class="ident">AstNode</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class AstNode:
+    &#34;&#34;&#34;The base class for all AST nodes.&#34;&#34;&#34;
+
+    def __repr__(self):
+        return f&#34;&lt;{self.__class__.__name__}: {self}&gt;&#34;
+
+    def is_hole(self) -&gt; bool:
+        &#34;&#34;&#34;Returns true if the node is a hole.&#34;&#34;&#34;
+        # most nodes are not holes,
+        # so only the Hole* nodes need to override this
+        return False
+
+    def has_holes(self) -&gt; bool:
+        &#34;&#34;&#34;Returns true if the pattern has one or more holes.&#34;&#34;&#34;
+        # most nodes need to override this to handle their children,
+        # so the default implementation is intended for Hole* nodes
+        return self.is_hole()
+
+    def is_valid(self) -&gt; bool:
+        &#34;&#34;&#34;Returns true if the pattern is valid, i.e., has no holes.&#34;&#34;&#34;
+        return not self.has_holes()
+
+    def tokens(self) -&gt; List[Text]:
+        &#34;&#34;&#34;Returns the pattern as a list of tokens.&#34;&#34;&#34;
+        # default implementation is intended for nodes that have no children
+        return [Text(self)]
+
+    def num_matcher_holes(self) -&gt; int:
+        &#34;&#34;&#34;Returns the number of matcher holes in this pattern.&#34;&#34;&#34;
+        return 0
+
+    def num_constraint_holes(self) -&gt; int:
+        &#34;&#34;&#34;Returns the number of constraint holes in this pattern.&#34;&#34;&#34;
+        return 0
+
+    def num_surface_holes(self) -&gt; int:
+        &#34;&#34;&#34;Returns the number of surface holes in this pattern.&#34;&#34;&#34;
+        return 0
+
+    def num_holes(self) -&gt; int:
+        &#34;&#34;&#34;Returns the number of holes in this pattern.&#34;&#34;&#34;
+        return (
+            self.num_matcher_holes()
+            + self.num_constraint_holes()
+            + self.num_surface_holes()
+        )
+
+    def expand_leftmost_hole(self, vocabularies: Vocabularies) -&gt; List[AstNode]:
+        &#34;&#34;&#34;
+        If the pattern has holes then it returns the patterns obtained
+        by expanding the leftmost hole.  If there are no holes then it
+        returns an empty list.
+        &#34;&#34;&#34;
+        # default implementation is suitable for Matchers only
+        return []
+
+    def preorder_traversal(self) -&gt; List[AstNode]:
+        &#34;&#34;&#34;Returns a list with all the nodes of the tree in preorder.&#34;&#34;&#34;
+        # default implementation is for nodes that have no children
+        return [self]</code></pre>
+</details>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
+<li><a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a></li>
+<li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.AstNode.expand_leftmost_hole"><code class="name flex">
+<span>def <span class="ident">expand_leftmost_hole</span></span>(<span>self, vocabularies: Vocabularies) ‑> List[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>If the pattern has holes then it returns the patterns obtained
+by expanding the leftmost hole.
+If there are no holes then it
+returns an empty list.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def expand_leftmost_hole(self, vocabularies: Vocabularies) -&gt; List[AstNode]:
+    &#34;&#34;&#34;
+    If the pattern has holes then it returns the patterns obtained
+    by expanding the leftmost hole.  If there are no holes then it
+    returns an empty list.
+    &#34;&#34;&#34;
+    # default implementation is suitable for Matchers only
+    return []</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.has_holes"><code class="name flex">
+<span>def <span class="ident">has_holes</span></span>(<span>self) ‑> bool</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns true if the pattern has one or more holes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def has_holes(self) -&gt; bool:
+    &#34;&#34;&#34;Returns true if the pattern has one or more holes.&#34;&#34;&#34;
+    # most nodes need to override this to handle their children,
+    # so the default implementation is intended for Hole* nodes
+    return self.is_hole()</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.is_hole"><code class="name flex">
+<span>def <span class="ident">is_hole</span></span>(<span>self) ‑> bool</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns true if the node is a hole.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def is_hole(self) -&gt; bool:
+    &#34;&#34;&#34;Returns true if the node is a hole.&#34;&#34;&#34;
+    # most nodes are not holes,
+    # so only the Hole* nodes need to override this
+    return False</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.is_valid"><code class="name flex">
+<span>def <span class="ident">is_valid</span></span>(<span>self) ‑> bool</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns true if the pattern is valid, i.e., has no holes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def is_valid(self) -&gt; bool:
+    &#34;&#34;&#34;Returns true if the pattern is valid, i.e., has no holes.&#34;&#34;&#34;
+    return not self.has_holes()</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_constraint_holes"><code class="name flex">
+<span>def <span class="ident">num_constraint_holes</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the number of constraint holes in this pattern.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_constraint_holes(self) -&gt; int:
+    &#34;&#34;&#34;Returns the number of constraint holes in this pattern.&#34;&#34;&#34;
+    return 0</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_holes"><code class="name flex">
+<span>def <span class="ident">num_holes</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the number of holes in this pattern.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_holes(self) -&gt; int:
+    &#34;&#34;&#34;Returns the number of holes in this pattern.&#34;&#34;&#34;
+    return (
+        self.num_matcher_holes()
+        + self.num_constraint_holes()
+        + self.num_surface_holes()
+    )</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_matcher_holes"><code class="name flex">
+<span>def <span class="ident">num_matcher_holes</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the number of matcher holes in this pattern.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_matcher_holes(self) -&gt; int:
+    &#34;&#34;&#34;Returns the number of matcher holes in this pattern.&#34;&#34;&#34;
+    return 0</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_surface_holes"><code class="name flex">
+<span>def <span class="ident">num_surface_holes</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the number of surface holes in this pattern.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_surface_holes(self) -&gt; int:
+    &#34;&#34;&#34;Returns the number of surface holes in this pattern.&#34;&#34;&#34;
+    return 0</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.preorder_traversal"><code class="name flex">
+<span>def <span class="ident">preorder_traversal</span></span>(<span>self) ‑> List[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a list with all the nodes of the tree in preorder.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def preorder_traversal(self) -&gt; List[AstNode]:
+    &#34;&#34;&#34;Returns a list with all the nodes of the tree in preorder.&#34;&#34;&#34;
+    # default implementation is for nodes that have no children
+    return [self]</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.tokens"><code class="name flex">
+<span>def <span class="ident">tokens</span></span>(<span>self) ‑> List[str]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the pattern as a list of tokens.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def tokens(self) -&gt; List[Text]:
+    &#34;&#34;&#34;Returns the pattern as a list of tokens.&#34;&#34;&#34;
+    # default implementation is intended for nodes that have no children
+    return [Text(self)]</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="odinson.ruleutils.queryast.ConcatSurface"><code class="flex name class">
+<span>class <span class="ident">ConcatSurface</span></span>
+<span>(</span><span>lhs: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>, rhs: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ConcatSurface(Surface):
+    def __init__(self, lhs: Surface, rhs: Surface):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __str__(self):
+        lhs = maybe_parens(self.lhs, OrSurface)
+        rhs = maybe_parens(self.rhs, OrSurface)
+        return f&#34;{lhs} {rhs}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, ConcatSurface)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
+        )
+
+    def has_holes(self):
+        return self.lhs.has_holes() or self.rhs.has_holes()
+
+    def tokens(self):
+        tokens = []
+        tokens += maybe_parens_tokens(self.lhs, OrSurface)
+        tokens += maybe_parens_tokens(self.rhs, OrSurface)
+        return tokens
+
+    def num_matcher_holes(self):
+        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
+
+    def num_surface_holes(self):
+        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.lhs.has_holes():
+            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            return [ConcatSurface(n, self.rhs) for n in nodes]
+        elif self.rhs.has_holes():
+            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            return [ConcatSurface(self.lhs, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Surface.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.Constraint"><code class="flex name class">
+<span>class <span class="ident">Constraint</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Constraint(AstNode):
+    pass</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.AndConstraint" href="#odinson.ruleutils.queryast.AndConstraint">AndConstraint</a></li>
+<li><a title="odinson.ruleutils.queryast.FieldConstraint" href="#odinson.ruleutils.queryast.FieldConstraint">FieldConstraint</a></li>
+<li><a title="odinson.ruleutils.queryast.HoleConstraint" href="#odinson.ruleutils.queryast.HoleConstraint">HoleConstraint</a></li>
+<li><a title="odinson.ruleutils.queryast.NotConstraint" href="#odinson.ruleutils.queryast.NotConstraint">NotConstraint</a></li>
+<li><a title="odinson.ruleutils.queryast.OrConstraint" href="#odinson.ruleutils.queryast.OrConstraint">OrConstraint</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.AstNode.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.ExactMatcher"><code class="flex name class">
+<span>class <span class="ident">ExactMatcher</span></span>
+<span>(</span><span>s: Text)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ExactMatcher(Matcher):
+    def __init__(self, s: Text):
+        self.string = s
+
+    def __str__(self):
+        if is_identifier(self.string):
+            # don&#39;t surround identifiers with quotes
+            return self.string
+        else:
+            return json.dumps(self.string)
+
+    def __eq__(self, value):
+        return isinstance(value, ExactMatcher) and self.string == value.string</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Matcher.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.FieldConstraint"><code class="flex name class">
+<span>class <span class="ident">FieldConstraint</span></span>
+<span>(</span><span>name: <a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a>, value: <a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class FieldConstraint(Constraint):
+    def __init__(self, name: Matcher, value: Matcher):
+        self.name = name
+        self.value = value
+
+    def __str__(self):
+        return f&#34;{self.name}={self.value}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, FieldConstraint)
+            and self.name == value.name
+            and self.value == value.value
+        )
+
+    def has_holes(self):
+        return self.name.has_holes() or self.value.has_holes()
+
+    def tokens(self):
+        return self.name.tokens() + [&#34;=&#34;] + self.value.tokens()
+
+    def num_matcher_holes(self):
+        return self.name.num_matcher_holes() + self.value.num_matcher_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.name.is_hole():
+            return [FieldConstraint(ExactMatcher(k), self.value) for k in vocabularies]
+        elif self.value.is_hole():
+            return [
+                FieldConstraint(self.name, ExactMatcher(v))
+                for v in vocabularies[self.name.string]
+            ]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return (
+            super().preorder_traversal()
+            + self.name.preorder_traversal()
+            + self.value.preorder_traversal()
+        )</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Constraint.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.HoleConstraint"><code class="flex name class">
+<span>class <span class="ident">HoleConstraint</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class HoleConstraint(Constraint):
+    def __str__(self):
+        return config.HOLE_GLYPH
+
+    def __eq__(self, value):
+        return isinstance(value, HoleConstraint)
+
+    def is_hole(self):
+        return True
+
+    def num_constraint_holes(self):
+        return 1
+
+    def expand_leftmost_hole(self, vocabularies):
+        return [
+            FieldConstraint(HoleMatcher(), HoleMatcher()),
+            NotConstraint(HoleConstraint()),
+            AndConstraint(HoleConstraint(), HoleConstraint()),
+            OrConstraint(HoleConstraint(), HoleConstraint()),
+        ]</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Constraint.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.HoleMatcher"><code class="flex name class">
+<span>class <span class="ident">HoleMatcher</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class HoleMatcher(Matcher):
+    def __str__(self):
+        return config.HOLE_GLYPH
+
+    def __eq__(self, value):
+        return isinstance(value, HoleMatcher)
+
+    def is_hole(self):
+        return True
+
+    def num_matcher_holes(self):
+        return 1</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Matcher.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.HoleSurface"><code class="flex name class">
+<span>class <span class="ident">HoleSurface</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class HoleSurface(Surface):
+    def __str__(self):
+        return config.HOLE_GLYPH
+
+    def __eq__(self, value):
+        return isinstance(value, HoleSurface)
+
+    def is_hole(self):
+        return True
+
+    def num_surface_holes(self):
+        return 1
+
+    def expand_leftmost_hole(self, vocabularies):
+        return [
+            TokenSurface(HoleConstraint()),
+            ConcatSurface(HoleSurface(), HoleSurface()),
+            OrSurface(HoleSurface(), HoleSurface()),
+            RepeatSurface(HoleSurface(), 0, 1),
+            RepeatSurface(HoleSurface(), 0, None),
+            RepeatSurface(HoleSurface(), 1, None),
+        ]</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Surface.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.Matcher"><code class="flex name class">
+<span>class <span class="ident">Matcher</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Matcher(AstNode):
+    pass</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.ExactMatcher" href="#odinson.ruleutils.queryast.ExactMatcher">ExactMatcher</a></li>
+<li><a title="odinson.ruleutils.queryast.HoleMatcher" href="#odinson.ruleutils.queryast.HoleMatcher">HoleMatcher</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.AstNode.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.NotConstraint"><code class="flex name class">
+<span>class <span class="ident">NotConstraint</span></span>
+<span>(</span><span>c: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class NotConstraint(Constraint):
+    def __init__(self, c: Constraint):
+        self.constraint = c
+
+    def __str__(self):
+        c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
+        return f&#34;!{c}&#34;
+
+    def __eq__(self, value):
+        return isinstance(value, NotConstraint) and self.constraint == value.constraint
+
+    def has_holes(self):
+        return self.constraint.has_holes()
+
+    def tokens(self):
+        return [&#34;!&#34;] + maybe_parens_tokens(
+            self.constraint, (AndConstraint, OrConstraint)
+        )
+
+    def num_matcher_holes(self):
+        return self.constraint.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.constraint.num_constraint_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        # get the next nodes for the nested constraint
+        nodes = self.constraint.expand_leftmost_hole(vocabularies)
+        # avoid nesting negations
+        return [NotConstraint(n) for n in nodes if not isinstance(n, NotConstraint)]
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.constraint.preorder_traversal()</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Constraint.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.OrConstraint"><code class="flex name class">
+<span>class <span class="ident">OrConstraint</span></span>
+<span>(</span><span>lhs: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>, rhs: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class OrConstraint(Constraint):
+    def __init__(self, lhs: Constraint, rhs: Constraint):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __str__(self):
+        return f&#34;{self.lhs} | {self.rhs}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, OrConstraint)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
+        )
+
+    def has_holes(self):
+        return self.lhs.has_holes() or self.rhs.has_holes()
+
+    def tokens(self):
+        return [*self.lhs.tokens(), &#34;|&#34;, *self.rhs.tokens()]
+
+    def num_matcher_holes(self):
+        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.lhs.has_holes():
+            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            return [OrConstraint(n, self.rhs) for n in nodes]
+        elif self.rhs.has_holes():
+            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            return [OrConstraint(self.lhs, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Constraint.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.OrSurface"><code class="flex name class">
+<span>class <span class="ident">OrSurface</span></span>
+<span>(</span><span>lhs: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>, rhs: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class OrSurface(Surface):
+    def __init__(self, lhs: Surface, rhs: Surface):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __str__(self):
+        return f&#34;{self.lhs} | {self.rhs}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, OrSurface)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
+        )
+
+    def has_holes(self):
+        return self.lhs.has_holes() or self.rhs.has_holes()
+
+    def tokens(self):
+        return [*self.lhs.tokens(), &#34;|&#34;, *self.rhs.tokens()]
+
+    def num_matcher_holes(self):
+        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
+
+    def num_surface_holes(self):
+        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.lhs.has_holes():
+            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            return [OrSurface(n, self.rhs) for n in nodes]
+        elif self.rhs.has_holes():
+            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            return [OrSurface(self.lhs, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Surface.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.RepeatSurface"><code class="flex name class">
+<span>class <span class="ident">RepeatSurface</span></span>
+<span>(</span><span>surf: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>, min: int, max: Optional[int])</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class RepeatSurface(Surface):
+    def __init__(self, surf: Surface, min: int, max: Optional[int]):
+        self.surf = surf
+        self.min = min
+        self.max = max
+
+    def __str__(self):
+        surf = maybe_parens(self.surf, (ConcatSurface, OrSurface))
+        quant = make_quantifier(self.min, self.max)
+        return f&#34;{surf}{quant}&#34;
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, RepeatSurface)
+            and self.surf == value.surf
+            and self.min == value.min
+            and self.max == value.max
+        )
+
+    def has_holes(self):
+        return self.surf.has_holes()
+
+    def tokens(self):
+        tokens = []
+        tokens += maybe_parens_tokens(self.surf, (ConcatSurface, OrSurface))
+        tokens += make_quantifier_tokens(self.min, self.max)
+        return tokens
+
+    def num_matcher_holes(self):
+        return self.surf.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.surf.num_constraint_holes()
+
+    def num_surface_holes(self):
+        return self.surf.num_surface_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        nodes = self.surf.expand_leftmost_hole(vocabularies)
+        # avoid nesting repetitions
+        nodes = [n for n in nodes if not isinstance(n, RepeatSurface)]
+        return [RepeatSurface(n, self.min, self.max) for n in nodes]
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.surf.preorder_traversal()</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Surface.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.Surface"><code class="flex name class">
+<span>class <span class="ident">Surface</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Surface(AstNode):
+    pass</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.ConcatSurface" href="#odinson.ruleutils.queryast.ConcatSurface">ConcatSurface</a></li>
+<li><a title="odinson.ruleutils.queryast.HoleSurface" href="#odinson.ruleutils.queryast.HoleSurface">HoleSurface</a></li>
+<li><a title="odinson.ruleutils.queryast.OrSurface" href="#odinson.ruleutils.queryast.OrSurface">OrSurface</a></li>
+<li><a title="odinson.ruleutils.queryast.RepeatSurface" href="#odinson.ruleutils.queryast.RepeatSurface">RepeatSurface</a></li>
+<li><a title="odinson.ruleutils.queryast.TokenSurface" href="#odinson.ruleutils.queryast.TokenSurface">TokenSurface</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.AstNode.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.TokenSurface"><code class="flex name class">
+<span>class <span class="ident">TokenSurface</span></span>
+<span>(</span><span>c: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class TokenSurface(Surface):
+    def __init__(self, c: Constraint):
+        self.constraint = c
+
+    def __str__(self):
+        return f&#34;[{self.constraint}]&#34;
+
+    def __eq__(self, value):
+        return isinstance(value, TokenSurface) and self.constraint == value.constraint
+
+    def has_holes(self):
+        return self.constraint.has_holes()
+
+    def tokens(self):
+        return [&#34;[&#34;, *self.constraint.tokens(), &#34;]&#34;]
+
+    def num_matcher_holes(self):
+        return self.constraint.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.constraint.num_constraint_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        nodes = self.constraint.expand_leftmost_hole(vocabularies)
+        return [TokenSurface(n) for n in nodes]
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.constraint.preorder_traversal()</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Surface.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="odinson.ruleutils" href="index.html">odinson.ruleutils</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.AndConstraint" href="#odinson.ruleutils.queryast.AndConstraint">AndConstraint</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.AstNode.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.ConcatSurface" href="#odinson.ruleutils.queryast.ConcatSurface">ConcatSurface</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.ExactMatcher" href="#odinson.ruleutils.queryast.ExactMatcher">ExactMatcher</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.FieldConstraint" href="#odinson.ruleutils.queryast.FieldConstraint">FieldConstraint</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.HoleConstraint" href="#odinson.ruleutils.queryast.HoleConstraint">HoleConstraint</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.HoleMatcher" href="#odinson.ruleutils.queryast.HoleMatcher">HoleMatcher</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.HoleSurface" href="#odinson.ruleutils.queryast.HoleSurface">HoleSurface</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.NotConstraint" href="#odinson.ruleutils.queryast.NotConstraint">NotConstraint</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.OrConstraint" href="#odinson.ruleutils.queryast.OrConstraint">OrConstraint</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.OrSurface" href="#odinson.ruleutils.queryast.OrSurface">OrSurface</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.RepeatSurface" href="#odinson.ruleutils.queryast.RepeatSurface">RepeatSurface</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.TokenSurface" href="#odinson.ruleutils.queryast.TokenSurface">TokenSurface</a></code></h4>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+</footer>
+</body>
+</html>
