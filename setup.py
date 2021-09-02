@@ -52,10 +52,7 @@ setup(
     author_email=info.contact,
     license=info.license,
     # see https://python-packaging.readthedocs.io/en/latest/command-line-scripts.html
-    scripts=[
-        "bin/example-script",
-        "bin/odinson-ruleutils-rest-api"
-        ],
+    scripts=["bin/example-script", "bin/odinson-ruleutils-rest-api"],
     install_requires=required,
     classifiers=[
         "Intended Audience :: Science/Research",
@@ -64,10 +61,7 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     tests_require=test_deps,
-    extras_require={
-        "test": test_deps,
-        "all": dev_deps
-    },
+    extras_require={"test": test_deps, "all": dev_deps},
     include_package_data=True,
     zip_safe=False,
 )

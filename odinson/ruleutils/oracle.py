@@ -6,7 +6,10 @@ from odinson.ruleutils.queryast import *
 # type alias
 Vocabularies = Dict[Text, List[Text]]
 
-def path_from_root(target: AstNode, vocabularies: Optional[Vocabularies] = None) -> List[AstNode]:
+
+def path_from_root(
+    target: AstNode, vocabularies: Optional[Vocabularies] = None
+) -> List[AstNode]:
     """
     Returns the sequence of transitions from the root of the search tree
     to the specified AstNode.
@@ -18,6 +21,7 @@ def path_from_root(target: AstNode, vocabularies: Optional[Vocabularies] = None)
         vocabularies = make_minimal_vocabularies(target)
     oracle = Oracle(root, target, vocabularies)
     return list(oracle.traversal())
+
 
 def random_tree(vocabularies: Vocabularies, n_iters: int = 10) -> AstNode:
     # start with a single hole
@@ -32,16 +36,19 @@ def random_tree(vocabularies: Vocabularies, n_iters: int = 10) -> AstNode:
     while tree.has_holes():
         surf_holes = tree.num_surface_holes()
         const_holes = tree.num_constraint_holes()
+
         def is_improvement(c):
             sh = c.num_surface_holes()
             ch = c.num_constraint_holes()
             return sh < surf_holes or (sh == surf_holes and ch <= const_holes)
+
         # discard candidates that don't improve the tree
         candidates = tree.expand_leftmost_hole(vocabularies)
         candidates = [c for c in candidates if is_improvement(c)]
         # pick from good candidates only
         tree = random.choice(candidates)
     return tree
+
 
 class Oracle:
     def __init__(self, src: AstNode, dst: AstNode, vocabularies: Vocabularies):
@@ -81,6 +88,7 @@ class Oracle:
                 # then we have a winner
                 return candidate
 
+
 def are_compatible(x: AstNode, y: AstNode) -> bool:
     """
     Compares two nodes to see if they're compatible.
@@ -93,6 +101,7 @@ def are_compatible(x: AstNode, y: AstNode) -> bool:
         return x.min == y.min and x.max == y.max
     else:
         return type(x) == type(y)
+
 
 def make_minimal_vocabularies(node: AstNode) -> Vocabularies:
     """Returns the collection of vocabularies required to build the given rule."""

@@ -1,5 +1,6 @@
 from typing import List
 
+
 class AppInfo:
     """
     General information about the application.
@@ -9,8 +10,8 @@ class AppInfo:
     """
 
     version: str = "0.1"
-    description: str = "Python library to manipulate Odinson rules." 
-    authors: List[str] = ['marcovzla', 'myedibleenso', 'BeckySharp']
+    description: str = "Python library to manipulate Odinson rules."
+    authors: List[str] = ["marcovzla", "myedibleenso", "BeckySharp"]
     contact: str = "gus@parsertongue.org"
     repo: str = "https://github.com/clu-ling/odinson-ruleutils"
     license: str = "Apache 2.0"
