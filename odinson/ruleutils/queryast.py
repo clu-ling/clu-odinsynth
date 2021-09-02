@@ -7,22 +7,22 @@ from odinson.ruleutils import config
 
 
 __all__ = [
-    'AstNode',
-    'Matcher',
-    'HoleMatcher',
-    'ExactMatcher',
-    'Constraint',
-    'HoleConstraint',
-    'FieldConstraint',
-    'OrConstraint',
-    'AndConstraint',
-    'NotConstraint',
-    'Surface',
-    'HoleSurface',
-    'TokenSurface',
-    'ConcatSurface',
-    'OrSurface',
-    'RepeatSurface',
+    "AstNode",
+    "Matcher",
+    "HoleMatcher",
+    "ExactMatcher",
+    "Constraint",
+    "HoleConstraint",
+    "FieldConstraint",
+    "OrConstraint",
+    "AndConstraint",
+    "NotConstraint",
+    "Surface",
+    "HoleSurface",
+    "TokenSurface",
+    "ConcatSurface",
+    "OrSurface",
+    "RepeatSurface",
 ]
 
 
@@ -34,7 +34,7 @@ class AstNode:
     """The base class for all AST nodes."""
 
     def __repr__(self):
-        return f'<{self.__class__.__name__}: {self}>'
+        return f"<{self.__class__.__name__}: {self}>"
 
     def is_hole(self) -> bool:
         """Returns true if the node is a hole."""
@@ -71,7 +71,11 @@ class AstNode:
 
     def num_holes(self) -> int:
         """Returns the number of holes in this pattern."""
-        return self.num_matcher_holes() + self.num_constraint_holes() + self.num_surface_holes()
+        return (
+            self.num_matcher_holes()
+            + self.num_constraint_holes()
+            + self.num_surface_holes()
+        )
 
     def expand_leftmost_hole(self, vocabularies: Vocabularies) -> List[AstNode]:
         """
@@ -96,48 +100,54 @@ def is_identifier(s: Text) -> bool:
     """returns true if the provided string is a valid identifier"""
     return config.IDENT_RE.match(s) is not None
 
+
 def maybe_parens(node: AstNode, types: Types) -> str:
     """Converts node to string. Surrounds by parenthesis
     if node is subclass of provided types."""
-    return f'({node})' if isinstance(node, types) else str(node)
+    return f"({node})" if isinstance(node, types) else str(node)
+
 
 def maybe_parens_tokens(node: AstNode, types: Types) -> List[Text]:
     """Converts node to list of tokens. Surrounds by parenthesis
     if node is subclass of provided types."""
-    return ['(', *node.tokens(), ')'] if isinstance(node, types) else node.tokens()
+    return ["(", *node.tokens(), ")"] if isinstance(node, types) else node.tokens()
+
 
 def make_quantifier(min: int, max: Optional[int]) -> str:
     """Gets the desired minimum and maximum repetitions
     and returns the appropriate quantifier."""
-    return ''.join(make_quantifier_tokens(min, max))
+    return "".join(make_quantifier_tokens(min, max))
+
 
 def make_quantifier_tokens(min: int, max: Optional[int]) -> List[Text]:
     """Gets the desired minimum and maximum repetitions
     and returns the sequence of tokens corresponding
     to the appropriate quantifier."""
     if min == max:
-        return ['{', str(min), '}']
+        return ["{", str(min), "}"]
     if max == None:
         if min == 0:
-            return ['*']
+            return ["*"]
         elif min == 1:
-            return ['+']
+            return ["+"]
         else:
-            return ['{', str(min), ',', '}']
+            return ["{", str(min), ",", "}"]
     if min == 0:
         if max == 1:
-            return ['?']
+            return ["?"]
         else:
-            return ['{', ',', str(max), '}']
-    return ['{', str(min), ',', str(max), '}']
+            return ["{", ",", str(max), "}"]
+    return ["{", str(min), ",", str(max), "}"]
 
 
 ####################
 # string matchers
 ####################
 
+
 class Matcher(AstNode):
     pass
+
 
 class HoleMatcher(Matcher):
     def __str__(self):
@@ -151,6 +161,7 @@ class HoleMatcher(Matcher):
 
     def num_matcher_holes(self):
         return 1
+
 
 class ExactMatcher(Matcher):
     def __init__(self, s: Text):
@@ -171,8 +182,10 @@ class ExactMatcher(Matcher):
 # token constraints
 ####################
 
+
 class Constraint(AstNode):
     pass
+
 
 class HoleConstraint(Constraint):
     def __str__(self):
@@ -195,26 +208,27 @@ class HoleConstraint(Constraint):
             OrConstraint(HoleConstraint(), HoleConstraint()),
         ]
 
+
 class FieldConstraint(Constraint):
     def __init__(self, name: Matcher, value: Matcher):
         self.name = name
         self.value = value
 
     def __str__(self):
-        return f'{self.name}={self.value}'
+        return f"{self.name}={self.value}"
 
     def __eq__(self, value):
         return (
-            isinstance(value, FieldConstraint) and
-            self.name == value.name and
-            self.value == value.value
+            isinstance(value, FieldConstraint)
+            and self.name == value.name
+            and self.value == value.value
         )
 
     def has_holes(self):
         return self.name.has_holes() or self.value.has_holes()
 
     def tokens(self):
-        return self.name.tokens() + ['='] + self.value.tokens()
+        return self.name.tokens() + ["="] + self.value.tokens()
 
     def num_matcher_holes(self):
         return self.name.num_matcher_holes() + self.value.num_matcher_holes()
@@ -223,12 +237,20 @@ class FieldConstraint(Constraint):
         if self.name.is_hole():
             return [FieldConstraint(ExactMatcher(k), self.value) for k in vocabularies]
         elif self.value.is_hole():
-            return [FieldConstraint(self.name, ExactMatcher(v)) for v in vocabularies[self.name.string]]
+            return [
+                FieldConstraint(self.name, ExactMatcher(v))
+                for v in vocabularies[self.name.string]
+            ]
         else:
             return []
 
     def preorder_traversal(self):
-        return super().preorder_traversal() + self.name.preorder_traversal() + self.value.preorder_traversal()
+        return (
+            super().preorder_traversal()
+            + self.name.preorder_traversal()
+            + self.value.preorder_traversal()
+        )
+
 
 class NotConstraint(Constraint):
     def __init__(self, c: Constraint):
@@ -236,7 +258,7 @@ class NotConstraint(Constraint):
 
     def __str__(self):
         c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
-        return f'!{c}'
+        return f"!{c}"
 
     def __eq__(self, value):
         return isinstance(value, NotConstraint) and self.constraint == value.constraint
@@ -245,7 +267,9 @@ class NotConstraint(Constraint):
         return self.constraint.has_holes()
 
     def tokens(self):
-        return ['!'] + maybe_parens_tokens(self.constraint, (AndConstraint, OrConstraint))
+        return ["!"] + maybe_parens_tokens(
+            self.constraint, (AndConstraint, OrConstraint)
+        )
 
     def num_matcher_holes(self):
         return self.constraint.num_matcher_holes()
@@ -262,19 +286,20 @@ class NotConstraint(Constraint):
     def preorder_traversal(self):
         return super().preorder_traversal() + self.constraint.preorder_traversal()
 
+
 class AndConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
 
     def __str__(self):
-        return f'{self.lhs} & {self.rhs}'
+        return f"{self.lhs} & {self.rhs}"
 
     def __eq__(self, value):
         return (
-            isinstance(value, AndConstraint) and
-            self.lhs == value.lhs and
-            self.rhs == value.rhs
+            isinstance(value, AndConstraint)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
         )
 
     def has_holes(self):
@@ -283,7 +308,7 @@ class AndConstraint(Constraint):
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.lhs, OrConstraint)
-        tokens.append('&')
+        tokens.append("&")
         tokens += maybe_parens_tokens(self.rhs, OrConstraint)
         return tokens
 
@@ -304,7 +329,12 @@ class AndConstraint(Constraint):
             return []
 
     def preorder_traversal(self):
-        return super().preorder_traversal() + self.lhs.preorder_traversal() + self.rhs.preorder_traversal()
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )
+
 
 class OrConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
@@ -312,20 +342,20 @@ class OrConstraint(Constraint):
         self.rhs = rhs
 
     def __str__(self):
-        return f'{self.lhs} | {self.rhs}'
+        return f"{self.lhs} | {self.rhs}"
 
     def __eq__(self, value):
         return (
-            isinstance(value, OrConstraint) and
-            self.lhs == value.lhs and
-            self.rhs == value.rhs
+            isinstance(value, OrConstraint)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
         )
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
 
     def tokens(self):
-        return [*self.lhs.tokens(), '|', *self.rhs.tokens()]
+        return [*self.lhs.tokens(), "|", *self.rhs.tokens()]
 
     def num_matcher_holes(self):
         return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
@@ -344,15 +374,21 @@ class OrConstraint(Constraint):
             return []
 
     def preorder_traversal(self):
-        return super().preorder_traversal() + self.lhs.preorder_traversal() + self.rhs.preorder_traversal()
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )
 
 
 ####################
 # surface patterns
 ####################
 
+
 class Surface(AstNode):
     pass
+
 
 class HoleSurface(Surface):
     def __str__(self):
@@ -377,12 +413,13 @@ class HoleSurface(Surface):
             RepeatSurface(HoleSurface(), 1, None),
         ]
 
+
 class TokenSurface(Surface):
     def __init__(self, c: Constraint):
         self.constraint = c
 
     def __str__(self):
-        return f'[{self.constraint}]'
+        return f"[{self.constraint}]"
 
     def __eq__(self, value):
         return isinstance(value, TokenSurface) and self.constraint == value.constraint
@@ -391,7 +428,7 @@ class TokenSurface(Surface):
         return self.constraint.has_holes()
 
     def tokens(self):
-        return ['[', *self.constraint.tokens(), ']']
+        return ["[", *self.constraint.tokens(), "]"]
 
     def num_matcher_holes(self):
         return self.constraint.num_matcher_holes()
@@ -406,6 +443,7 @@ class TokenSurface(Surface):
     def preorder_traversal(self):
         return super().preorder_traversal() + self.constraint.preorder_traversal()
 
+
 class ConcatSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
@@ -414,13 +452,13 @@ class ConcatSurface(Surface):
     def __str__(self):
         lhs = maybe_parens(self.lhs, OrSurface)
         rhs = maybe_parens(self.rhs, OrSurface)
-        return f'{lhs} {rhs}'
+        return f"{lhs} {rhs}"
 
     def __eq__(self, value):
         return (
-            isinstance(value, ConcatSurface) and
-            self.lhs == value.lhs and
-            self.rhs == value.rhs
+            isinstance(value, ConcatSurface)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
         )
 
     def has_holes(self):
@@ -452,7 +490,12 @@ class ConcatSurface(Surface):
             return []
 
     def preorder_traversal(self):
-        return super().preorder_traversal() + self.lhs.preorder_traversal() + self.rhs.preorder_traversal()
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )
+
 
 class OrSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
@@ -460,20 +503,20 @@ class OrSurface(Surface):
         self.rhs = rhs
 
     def __str__(self):
-        return f'{self.lhs} | {self.rhs}'
+        return f"{self.lhs} | {self.rhs}"
 
     def __eq__(self, value):
         return (
-            isinstance(value, OrSurface) and
-            self.lhs == value.lhs and
-            self.rhs == value.rhs
+            isinstance(value, OrSurface)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
         )
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
 
     def tokens(self):
-        return [*self.lhs.tokens(), '|', *self.rhs.tokens()]
+        return [*self.lhs.tokens(), "|", *self.rhs.tokens()]
 
     def num_matcher_holes(self):
         return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
@@ -495,7 +538,12 @@ class OrSurface(Surface):
             return []
 
     def preorder_traversal(self):
-        return super().preorder_traversal() + self.lhs.preorder_traversal() + self.rhs.preorder_traversal()
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )
+
 
 class RepeatSurface(Surface):
     def __init__(self, surf: Surface, min: int, max: Optional[int]):
@@ -506,14 +554,14 @@ class RepeatSurface(Surface):
     def __str__(self):
         surf = maybe_parens(self.surf, (ConcatSurface, OrSurface))
         quant = make_quantifier(self.min, self.max)
-        return f'{surf}{quant}'
+        return f"{surf}{quant}"
 
     def __eq__(self, value):
         return (
-            isinstance(value, RepeatSurface) and
-            self.surf == value.surf and
-            self.min == value.min and
-            self.max == value.max
+            isinstance(value, RepeatSurface)
+            and self.surf == value.surf
+            and self.min == value.min
+            and self.max == value.max
         )
 
     def has_holes(self):

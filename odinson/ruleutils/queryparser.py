@@ -19,22 +19,22 @@ def make_odinson_style_parser():
     """Returns a parser for the query language using pyparsing."""
 
     # punctuation
-    comma = Literal(',').suppress()
-    equals = Literal('=').suppress()
-    vbar = Literal('|').suppress()
-    ampersand = Literal('&').suppress()
-    open_curly = Literal('{').suppress()
-    close_curly = Literal('}').suppress()
-    open_parens = Literal('(').suppress()
-    close_parens = Literal(')').suppress()
-    open_bracket = Literal('[').suppress()
-    close_bracket = Literal(']').suppress()
+    comma = Literal(",").suppress()
+    equals = Literal("=").suppress()
+    vbar = Literal("|").suppress()
+    ampersand = Literal("&").suppress()
+    open_curly = Literal("{").suppress()
+    close_curly = Literal("}").suppress()
+    open_parens = Literal("(").suppress()
+    close_parens = Literal(")").suppress()
+    open_bracket = Literal("[").suppress()
+    close_bracket = Literal("]").suppress()
 
     # literal values
     hole = config.HOLE_GLYPH
     number = Word(nums).setParseAction(lambda t: int(t[0]))
-    identifier = Word(alphas + '_', alphanums + '_')
-    quoted_string = QuotedString('"', unquoteResults=True, escChar='\\')
+    identifier = Word(alphas + "_", alphanums + "_")
+    quoted_string = QuotedString('"', unquoteResults=True, escChar="\\")
     string = identifier | quoted_string
 
     # number to the left of the comma {n,}
@@ -50,13 +50,17 @@ def make_odinson_style_parser():
     quant_range_neither = open_curly + comma + close_curly
     quant_range_neither.setParseAction(lambda t: (0, None))
     # range {n,m}
-    quant_range = quant_range_left | quant_range_right | quant_range_both | quant_range_neither
+    quant_range = (
+        quant_range_left | quant_range_right | quant_range_both | quant_range_neither
+    )
     # repetition {n}
     quant_rep = open_curly + number + close_curly
     quant_rep.setParseAction(lambda t: (t[0], t[0]))
     # quantifier operator
-    quant_op = oneOf('? * +')
-    quant_op.setParseAction(lambda t: (0, 1) if t[0] == '?' else (0, None) if t[0] == '*' else (1, None))
+    quant_op = oneOf("? * +")
+    quant_op.setParseAction(
+        lambda t: (0, 1) if t[0] == "?" else (0, None) if t[0] == "*" else (1, None)
+    )
     # any quantifier
     quantifier = quant_op | quant_range | quant_rep
 
@@ -80,10 +84,12 @@ def make_odinson_style_parser():
     or_constraint = Forward()
 
     # an expression that represents a single constraint
-    atomic_constraint = field_constraint | hole_constraint | open_parens + or_constraint + close_parens
+    atomic_constraint = (
+        field_constraint | hole_constraint | open_parens + or_constraint + close_parens
+    )
 
     # a constraint that may or may not be negated
-    not_constraint = Optional('!') + atomic_constraint
+    not_constraint = Optional("!") + atomic_constraint
     not_constraint.setParseAction(lambda t: NotConstraint(t[1]) if len(t) > 1 else t[0])
 
     # one or two constraints ANDed together
@@ -106,11 +112,15 @@ def make_odinson_style_parser():
     or_surface = Forward()
 
     # an expression that represents a single query
-    atomic_surface = hole_query | token_surface | open_parens + or_surface + close_parens
+    atomic_surface = (
+        hole_query | token_surface | open_parens + or_surface + close_parens
+    )
 
     # a query with an optional quantifier
     repeat_surface = atomic_surface + Optional(quantifier)
-    repeat_surface.setParseAction(lambda t: RepeatSurface(t[0], *t[1]) if len(t) > 1 else t[0])
+    repeat_surface.setParseAction(
+        lambda t: RepeatSurface(t[0], *t[1]) if len(t) > 1 else t[0]
+    )
 
     # one or two queries that must match consecutively
     concat_surface = Forward()

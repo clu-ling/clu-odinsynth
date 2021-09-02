@@ -6,9 +6,9 @@ try:
     __version__ = info.version
 
     __all__ = [
-        'QueryParser',
-        'path_from_root',
-        'random_tree',
+        "QueryParser",
+        "path_from_root",
+        "random_tree",
     ]
 
 except Exception as e:
