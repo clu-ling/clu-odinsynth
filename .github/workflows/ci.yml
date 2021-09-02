@@ -78,7 +78,7 @@ jobs:
 
     # docs
     - name: "Create documentation (API docs)"
-      run: docker run -i -v "$GITHUB_WORKSPACE:/app" "${ORG}/${IMAGE_NAME}" pdoc --html -c latex_math=True --force --output-dir docs/api clu
+      run: docker run -i -v "$GITHUB_WORKSPACE:/app" "${ORG}/${IMAGE_NAME}" pdoc --html -c latex_math=True --force --output-dir docs/api odinson
     # docs
     - name: "Create documentation (other)"
       env:
