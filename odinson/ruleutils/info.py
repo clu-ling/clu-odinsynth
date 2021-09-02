@@ -9,7 +9,7 @@ class AppInfo:
     See https://github.com/clu-ling/clu-template for more info.
     """
 
-    version: str = "0.1"
+    version: str = "0.1-beta"
     description: str = "Python library to manipulate Odinson rules."
     authors: List[str] = ["marcovzla", "myedibleenso", "BeckySharp"]
     contact: str = "gus@parsertongue.org"
