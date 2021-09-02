@@ -1,6 +1,7 @@
 from pyparsing import *
-from .queryast import *
-from . import config
+from odinson.ruleutils.queryast import *
+from typing import Text
+from odinson.ruleutils import config
 
 
 class QueryParser:
@@ -9,7 +10,7 @@ class QueryParser:
     def __init__(self):
         self.parser = make_odinson_style_parser()
 
-    def parse(self, pattern: str) -> AstNode:
+    def parse(self, pattern: Text) -> AstNode:
         """Gets a string and returns the corresponding AST."""
         return self.parser.parseString(pattern)[0]
 

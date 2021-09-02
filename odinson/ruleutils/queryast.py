@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 import json
-from typing import Dict, List, Optional, Type, Text, Union
-from . import config
+from typing import Dict, List, Optional, Text, Tuple, Type, Union
+from odinson.ruleutils import config
 
 
 __all__ = [
@@ -89,10 +89,10 @@ class AstNode:
 
 
 # type alias
-Types = Union[Type[AstNode], tuple[Type[AstNode]]]
+Types = Type[Union[AstNode, Tuple[AstNode]]]
 
 
-def is_identifier(s: str) -> bool:
+def is_identifier(s: Text) -> bool:
     """returns true if the provided string is a valid identifier"""
     return config.IDENT_RE.match(s) is not None
 
@@ -153,7 +153,7 @@ class HoleMatcher(Matcher):
         return 1
 
 class ExactMatcher(Matcher):
-    def __init__(self, s: str):
+    def __init__(self, s: Text):
         self.string = s
 
     def __str__(self):

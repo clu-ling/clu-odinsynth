@@ -1,10 +1,10 @@
 import random
 from collections import defaultdict
-from typing import Optional, List, Text
-from .queryast import *
+from typing import Dict, Optional, List, Text, Type
+from odinson.ruleutils.queryast import *
 
 # type alias
-Vocabularies = dict[Text, List[Text]]
+Vocabularies = Dict[Text, List[Text]]
 
 def path_from_root(target: AstNode, vocabularies: Optional[Vocabularies] = None) -> List[AstNode]:
     """
