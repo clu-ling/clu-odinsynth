@@ -41,6 +41,7 @@ dev_deps = test_deps + [
 
 setup(
     name="odinson-ruleutils",
+    python_requires=">=3.8",
     packages=["odinson.ruleutils"],
     version=info.version,
     keywords=["nlp"],
