@@ -42,6 +42,14 @@ def random_traversal(vocabularies: Vocabularies, n_iters: int = 10) -> Traversal
 def random_query(vocabularies: Vocabularies, n_iters: int = 10) -> Query:
     return random_tree(HoleQuery(), vocabularies, n_iters)
 
+# TODO rename
+def random_query_2(vocabularies: Vocabularies, n_iters: int = 1) -> Query:
+    return HybridQuery(
+        random_surface(vocabularies, n_iters),
+        random_traversal(vocabularies, n_iters),
+        random_surface(vocabularies, n_iters) if random.random() < 0.5 else random_query_2(vocabularies, n_iters),
+    )
+
 def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int) -> AstNode:
     tree = root
     # for a few iterations pick randomly from all candidates
