@@ -22,6 +22,8 @@ def make_odinson_style_parser():
     comma = Literal(",").suppress()
     equals = Literal("=").suppress()
     vbar = Literal("|").suppress()
+    lt = Literal("<").suppress()
+    gt = Literal(">").suppress()
     ampersand = Literal("&").suppress()
     open_curly = Literal("{").suppress()
     close_curly = Literal("}").suppress()
@@ -131,7 +133,39 @@ def make_odinson_style_parser():
     or_surface << (concat_surface + Optional(vbar + or_surface))
     or_surface.setParseAction(lambda t: OrSurface(*t) if len(t) == 2 else t[0])
 
-    # the top symbol of our grammar
-    basic_query = LineStart() + or_surface + LineEnd()
+    # labeled incoming edge
+    incoming_traversal = lt + matcher
+    incoming_traversal.setParseAction(lambda t: IncomingTraversal(t[0]))
 
-    return basic_query
+    # labeled outgoing edge
+    outgoing_traversal = gt + matcher
+    outgoing_traversal.setParseAction(lambda t: OutgoingTraversal(t[0]))
+
+    # forward declaration, defined below
+    or_traversal = Forward()
+
+    # an expression that represents a single traversal
+    atomic_traversal = incoming_traversal | outgoing_traversal | open_parens + or_traversal + close_parens
+
+    # a traversal with an optional quantifier
+    repeat_traversal = atomic_traversal + Optional(quantifier)
+    repeat_traversal.setParseAction(lambda t: RepeatTraversal(t[0], *t[1]) if len(t) > 1 else t[0])
+
+    # one or two traversals that must match consecutively
+    concat_traversal = Forward()
+    concat_traversal << (repeat_traversal + Optional(concat_traversal))
+    concat_traversal.setParseAction(lambda t: ConcatTraversal(*t) if len(t) == 2 else t[0])
+
+    # one or two traversals ORed together
+    or_traversal << (concat_traversal + Optional(vbar + or_traversal))
+    or_traversal.setParseAction(lambda t: OrTraversal(*t) if len(t) == 2 else t[0])
+
+    # a single surface or a hybrid (surface, traversal, surface)
+    hybrid_query = Forward()
+    hybrid_query << (or_surface + Optional(or_traversal + hybrid_query))
+    hybrid_query.setParseAction(lambda t: HybridQuery(*t) if len(t) == 3 else t[0])
+
+    # the top symbol of our grammar
+    odinson_query = LineStart() + hybrid_query + LineEnd()
+
+    return odinson_query
