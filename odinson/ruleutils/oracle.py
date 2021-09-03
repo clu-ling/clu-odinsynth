@@ -2,6 +2,7 @@ import random
 from collections import defaultdict
 from typing import Dict, Optional, List, Text, Type
 from odinson.ruleutils.queryast import *
+from odinson.ruleutils import config
 
 # type alias
 Vocabularies = Dict[Text, List[Text]]
@@ -14,7 +15,16 @@ def path_from_root(
     Returns the sequence of transitions from the root of the search tree
     to the specified AstNode.
     """
-    root = HoleSurface()
+    if isinstance(target, Query):
+        root = HoleQuery()
+    elif isinstance(target, Traversal):
+        root = HoleTraversal()
+    elif isinstance(target, Surface):
+        root = HoleSurface()
+    elif isinstance(target, Constraint):
+        root = HoleConstraint()
+    else:
+        raise ValueError(f"unsupported target type '{type(target)}'")
     if vocabularies is None:
         # If no vocabularies were provided then construct
         # the minimal vocabularies required to reach the target.
@@ -86,7 +96,7 @@ class Oracle:
 
     def traversal(self):
         current = self.src
-        while True:
+        while current is not None:
             yield current
             if current == self.dst:
                 break
@@ -137,4 +147,7 @@ def make_minimal_vocabularies(node: AstNode) -> Vocabularies:
             name = n.name.string
             value = n.value.string
             vocabularies[name].add(value)
+        elif isinstance(n, (IncomingTraversal, OutgoingTraversal)):
+            label = n.label.string
+            vocabularies[config.SYNTAX_FIELD].add(label)
     return {k: list(v) for k, v in vocabularies.items()}
