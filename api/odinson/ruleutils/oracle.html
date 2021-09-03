@@ -31,6 +31,8 @@
 from collections import defaultdict
 from typing import Dict, Optional, List, Text, Type
 from odinson.ruleutils.queryast import *
+from odinson.ruleutils.queryparser import parse_odinson_query, parse_traversal
+from odinson.ruleutils import config
 
 # type alias
 Vocabularies = Dict[Text, List[Text]]
@@ -43,7 +45,16 @@ def path_from_root(
     Returns the sequence of transitions from the root of the search tree
     to the specified AstNode.
     &#34;&#34;&#34;
-    root = HoleSurface()
+    if isinstance(target, Query):
+        root = HoleQuery()
+    elif isinstance(target, Traversal):
+        root = HoleTraversal()
+    elif isinstance(target, Surface):
+        root = HoleSurface()
+    elif isinstance(target, Constraint):
+        root = HoleConstraint()
+    else:
+        raise ValueError(f&#34;unsupported target type &#39;{type(target)}&#39;&#34;)
     if vocabularies is None:
         # If no vocabularies were provided then construct
         # the minimal vocabularies required to reach the target.
@@ -52,24 +63,60 @@ def path_from_root(
     return list(oracle.traversal())
 
 
-def random_tree(vocabularies: Vocabularies, n_iters: int = 10) -&gt; AstNode:
-    # start with a single hole
-    tree = HoleSurface()
+def random_surface(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Surface:
+    tree = random_tree(HoleSurface(), vocabularies, n_iters)
+    # hack: pass tree through parser to make it right-heavy
+    tree = parse_odinson_query(str(tree))
+    return tree
+
+def random_traversal(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Traversal:
+    tree = random_tree(HoleTraversal(), vocabularies, n_iters)
+    # hack: pass tree through parser to make it right-heavy
+    tree = parse_traversal(str(tree))
+    return tree
+
+def random_query(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Query:
+    return HybridQuery(
+        random_surface(vocabularies, n_iters),
+        random_traversal(vocabularies, n_iters),
+        random_surface(vocabularies, n_iters) if random.random() &lt; 0.5 else random_query(vocabularies, n_iters),
+    )
+
+def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int) -&gt; AstNode:
+    tree = root
     # for a few iterations pick randomly from all candidates
     for i in range(n_iters):
-        candidates = tree.expand_leftmost_hole(vocabularies)
-        tree = random.choice(candidates)
         if not tree.has_holes():
             break
+        candidates = tree.expand_leftmost_hole(vocabularies)
+        tree = random.choice(candidates)
     # now we start to fill all remaining holes
     while tree.has_holes():
-        surf_holes = tree.num_surface_holes()
-        const_holes = tree.num_constraint_holes()
+        query_holes = tree.num_query_holes()
+        traversal_holes = tree.num_traversal_holes()
+        surface_holes = tree.num_surface_holes()
+        constraint_holes = tree.num_constraint_holes()
+        matcher_holes = tree.num_matcher_holes()
 
         def is_improvement(c):
+            qh = c.num_query_holes()
+            th = c.num_traversal_holes()
             sh = c.num_surface_holes()
             ch = c.num_constraint_holes()
-            return sh &lt; surf_holes or (sh == surf_holes and ch &lt;= const_holes)
+            mh = c.num_matcher_holes()
+            if qh &lt; query_holes:
+                return True
+            if qh &gt; query_holes:
+                return False
+            if th &lt; traversal_holes:
+                return True
+            if th &gt; traversal_holes:
+                return False
+            if sh &lt; surface_holes:
+                return True
+            if sh &gt; surface_holes:
+                return False
+            return ch &lt;= constraint_holes
 
         # discard candidates that don&#39;t improve the tree
         candidates = tree.expand_leftmost_hole(vocabularies)
@@ -89,7 +136,7 @@ class Oracle:
 
     def traversal(self):
         current = self.src
-        while True:
+        while current is not None:
             yield current
             if current == self.dst:
                 break
@@ -140,6 +187,9 @@ def make_minimal_vocabularies(node: AstNode) -&gt; Vocabularies:
             name = n.name.string
             value = n.value.string
             vocabularies[name].add(value)
+        elif isinstance(n, (IncomingTraversal, OutgoingTraversal)):
+            label = n.label.string
+            vocabularies[config.SYNTAX_FIELD].add(label)
     return {k: list(v) for k, v in vocabularies.items()}</code></pre>
 </details>
 </section>
@@ -192,6 +242,9 @@ because the nodes may contain holes.</p></div>
             name = n.name.string
             value = n.value.string
             vocabularies[name].add(value)
+        elif isinstance(n, (IncomingTraversal, OutgoingTraversal)):
+            label = n.label.string
+            vocabularies[config.SYNTAX_FIELD].add(label)
     return {k: list(v) for k, v in vocabularies.items()}</code></pre>
 </details>
 </dd>
@@ -212,7 +265,16 @@ to the specified AstNode.</p></div>
     Returns the sequence of transitions from the root of the search tree
     to the specified AstNode.
     &#34;&#34;&#34;
-    root = HoleSurface()
+    if isinstance(target, Query):
+        root = HoleQuery()
+    elif isinstance(target, Traversal):
+        root = HoleTraversal()
+    elif isinstance(target, Surface):
+        root = HoleSurface()
+    elif isinstance(target, Constraint):
+        root = HoleConstraint()
+    else:
+        raise ValueError(f&#34;unsupported target type &#39;{type(target)}&#39;&#34;)
     if vocabularies is None:
         # If no vocabularies were provided then construct
         # the minimal vocabularies required to reach the target.
@@ -221,8 +283,8 @@ to the specified AstNode.</p></div>
     return list(oracle.traversal())</code></pre>
 </details>
 </dd>
-<dt id="odinson.ruleutils.oracle.random_tree"><code class="name flex">
-<span>def <span class="ident">random_tree</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 10) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
+<dt id="odinson.ruleutils.oracle.random_query"><code class="name flex">
+<span>def <span class="ident">random_query</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.Query" href="queryast.html#odinson.ruleutils.queryast.Query">Query</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -230,24 +292,90 @@ to the specified AstNode.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def random_tree(vocabularies: Vocabularies, n_iters: int = 10) -&gt; AstNode:
-    # start with a single hole
-    tree = HoleSurface()
+<pre><code class="python">def random_query(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Query:
+    return HybridQuery(
+        random_surface(vocabularies, n_iters),
+        random_traversal(vocabularies, n_iters),
+        random_surface(vocabularies, n_iters) if random.random() &lt; 0.5 else random_query(vocabularies, n_iters),
+    )</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.oracle.random_surface"><code class="name flex">
+<span>def <span class="ident">random_surface</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.Surface" href="queryast.html#odinson.ruleutils.queryast.Surface">Surface</a></span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def random_surface(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Surface:
+    tree = random_tree(HoleSurface(), vocabularies, n_iters)
+    # hack: pass tree through parser to make it right-heavy
+    tree = parse_odinson_query(str(tree))
+    return tree</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.oracle.random_traversal"><code class="name flex">
+<span>def <span class="ident">random_traversal</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.Traversal" href="queryast.html#odinson.ruleutils.queryast.Traversal">Traversal</a></span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def random_traversal(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Traversal:
+    tree = random_tree(HoleTraversal(), vocabularies, n_iters)
+    # hack: pass tree through parser to make it right-heavy
+    tree = parse_traversal(str(tree))
+    return tree</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.oracle.random_tree"><code class="name flex">
+<span>def <span class="ident">random_tree</span></span>(<span>root: <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>, vocabularies: Dict[str, List[str]], n_iters: int) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int) -&gt; AstNode:
+    tree = root
     # for a few iterations pick randomly from all candidates
     for i in range(n_iters):
-        candidates = tree.expand_leftmost_hole(vocabularies)
-        tree = random.choice(candidates)
         if not tree.has_holes():
             break
+        candidates = tree.expand_leftmost_hole(vocabularies)
+        tree = random.choice(candidates)
     # now we start to fill all remaining holes
     while tree.has_holes():
-        surf_holes = tree.num_surface_holes()
-        const_holes = tree.num_constraint_holes()
+        query_holes = tree.num_query_holes()
+        traversal_holes = tree.num_traversal_holes()
+        surface_holes = tree.num_surface_holes()
+        constraint_holes = tree.num_constraint_holes()
+        matcher_holes = tree.num_matcher_holes()
 
         def is_improvement(c):
+            qh = c.num_query_holes()
+            th = c.num_traversal_holes()
             sh = c.num_surface_holes()
             ch = c.num_constraint_holes()
-            return sh &lt; surf_holes or (sh == surf_holes and ch &lt;= const_holes)
+            mh = c.num_matcher_holes()
+            if qh &lt; query_holes:
+                return True
+            if qh &gt; query_holes:
+                return False
+            if th &lt; traversal_holes:
+                return True
+            if th &gt; traversal_holes:
+                return False
+            if sh &lt; surface_holes:
+                return True
+            if sh &gt; surface_holes:
+                return False
+            return ch &lt;= constraint_holes
 
         # discard candidates that don&#39;t improve the tree
         candidates = tree.expand_leftmost_hole(vocabularies)
@@ -282,7 +410,7 @@ to the specified AstNode.</p></div>
 
     def traversal(self):
         current = self.src
-        while True:
+        while current is not None:
             yield current
             if current == self.dst:
                 break
@@ -355,7 +483,7 @@ to the specified AstNode.</p></div>
 </summary>
 <pre><code class="python">def traversal(self):
     current = self.src
-    while True:
+    while current is not None:
         yield current
         if current == self.dst:
             break
@@ -383,6 +511,9 @@ to the specified AstNode.</p></div>
 <li><code><a title="odinson.ruleutils.oracle.are_compatible" href="#odinson.ruleutils.oracle.are_compatible">are_compatible</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.make_minimal_vocabularies" href="#odinson.ruleutils.oracle.make_minimal_vocabularies">make_minimal_vocabularies</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.path_from_root" href="#odinson.ruleutils.oracle.path_from_root">path_from_root</a></code></li>
+<li><code><a title="odinson.ruleutils.oracle.random_query" href="#odinson.ruleutils.oracle.random_query">random_query</a></code></li>
+<li><code><a title="odinson.ruleutils.oracle.random_surface" href="#odinson.ruleutils.oracle.random_surface">random_surface</a></code></li>
+<li><code><a title="odinson.ruleutils.oracle.random_traversal" href="#odinson.ruleutils.oracle.random_traversal">random_traversal</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.random_tree" href="#odinson.ruleutils.oracle.random_tree">random_tree</a></code></li>
 </ul>
 </li>
