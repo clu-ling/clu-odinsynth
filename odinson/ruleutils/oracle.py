@@ -2,6 +2,7 @@ import random
 from collections import defaultdict
 from typing import Dict, Optional, List, Text, Type
 from odinson.ruleutils.queryast import *
+from odinson.ruleutils.queryparser import parse_odinson_query, parse_traversal
 from odinson.ruleutils import config
 
 # type alias
@@ -33,21 +34,23 @@ def path_from_root(
     return list(oracle.traversal())
 
 
-def random_surface(vocabularies: Vocabularies, n_iters: int = 10) -> Surface:
-    return random_tree(HoleSurface(), vocabularies, n_iters)
+def random_surface(vocabularies: Vocabularies, n_iters: int = 1) -> Surface:
+    tree = random_tree(HoleSurface(), vocabularies, n_iters)
+    # hack: pass tree through parser to make it right-heavy
+    tree = parse_odinson_query(str(tree))
+    return tree
 
-def random_traversal(vocabularies: Vocabularies, n_iters: int = 10) -> Traversal:
-    return random_tree(HoleTraversal(), vocabularies, n_iters)
+def random_traversal(vocabularies: Vocabularies, n_iters: int = 1) -> Traversal:
+    tree = random_tree(HoleTraversal(), vocabularies, n_iters)
+    # hack: pass tree through parser to make it right-heavy
+    tree = parse_traversal(str(tree))
+    return tree
 
-def random_query(vocabularies: Vocabularies, n_iters: int = 10) -> Query:
-    return random_tree(HoleQuery(), vocabularies, n_iters)
-
-# TODO rename
-def random_query_2(vocabularies: Vocabularies, n_iters: int = 1) -> Query:
+def random_query(vocabularies: Vocabularies, n_iters: int = 1) -> Query:
     return HybridQuery(
         random_surface(vocabularies, n_iters),
         random_traversal(vocabularies, n_iters),
-        random_surface(vocabularies, n_iters) if random.random() < 0.5 else random_query_2(vocabularies, n_iters),
+        random_surface(vocabularies, n_iters) if random.random() < 0.5 else random_query(vocabularies, n_iters),
     )
 
 def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int) -> AstNode:
