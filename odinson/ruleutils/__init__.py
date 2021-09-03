@@ -1,14 +1,16 @@
 try:
     from .info import info
-    from .queryparser import QueryParser
-    from .oracle import path_from_root, random_tree
+    from .queryparser import parse_odinson_query
+    from .oracle import *
 
     __version__ = info.version
 
     __all__ = [
-        "QueryParser",
+        "parse_odinson_query",
         "path_from_root",
-        "random_tree",
+        "random_surface",
+        "random_traversal",
+        "random_query",
     ]
 
 except Exception as e:
