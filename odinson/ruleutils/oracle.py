@@ -23,24 +23,50 @@ def path_from_root(
     return list(oracle.traversal())
 
 
-def random_tree(vocabularies: Vocabularies, n_iters: int = 10) -> AstNode:
-    # start with a single hole
-    tree = HoleSurface()
+def random_surface(vocabularies: Vocabularies, n_iters: int = 10) -> Surface:
+    return random_tree(HoleSurface(), vocabularies, n_iters)
+
+def random_traversal(vocabularies: Vocabularies, n_iters: int = 10) -> Traversal:
+    return random_tree(HoleTraversal(), vocabularies, n_iters)
+
+def random_query(vocabularies: Vocabularies, n_iters: int = 10) -> Query:
+    return random_tree(HoleQuery(), vocabularies, n_iters)
+
+def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int) -> AstNode:
+    tree = root
     # for a few iterations pick randomly from all candidates
     for i in range(n_iters):
-        candidates = tree.expand_leftmost_hole(vocabularies)
-        tree = random.choice(candidates)
         if not tree.has_holes():
             break
+        candidates = tree.expand_leftmost_hole(vocabularies)
+        tree = random.choice(candidates)
     # now we start to fill all remaining holes
     while tree.has_holes():
-        surf_holes = tree.num_surface_holes()
-        const_holes = tree.num_constraint_holes()
+        query_holes = tree.num_query_holes()
+        traversal_holes = tree.num_traversal_holes()
+        surface_holes = tree.num_surface_holes()
+        constraint_holes = tree.num_constraint_holes()
+        matcher_holes = tree.num_matcher_holes()
 
         def is_improvement(c):
+            qh = c.num_query_holes()
+            th = c.num_traversal_holes()
             sh = c.num_surface_holes()
             ch = c.num_constraint_holes()
-            return sh < surf_holes or (sh == surf_holes and ch <= const_holes)
+            mh = c.num_matcher_holes()
+            if qh < query_holes:
+                return True
+            if qh > query_holes:
+                return False
+            if th < traversal_holes:
+                return True
+            if th > traversal_holes:
+                return False
+            if sh < surface_holes:
+                return True
+            if sh > surface_holes:
+                return False
+            return ch <= constraint_holes
 
         # discard candidates that don't improve the tree
         candidates = tree.expand_leftmost_hole(vocabularies)
