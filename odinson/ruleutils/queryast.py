@@ -23,6 +23,16 @@ __all__ = [
     "ConcatSurface",
     "OrSurface",
     "RepeatSurface",
+    "Traversal",
+    "HoleTraversal",
+    "IncomingTraversal",
+    "OutgoingTraversal",
+    "ConcatTraversal",
+    "OrTraversal",
+    "RepeatTraversal",
+    "Query",
+    "HoleQuery",
+    "HybridQuery",
 ]
 
 
@@ -69,12 +79,22 @@ class AstNode:
         """Returns the number of surface holes in this pattern."""
         return 0
 
+    def num_traversal_holes(self) -> int:
+        """Returns the number of traversal holes in this pattern."""
+        return 0
+
+    def num_query_holes(self) -> int:
+        """Returns the number of traversal holes in this pattern."""
+        return 0
+
     def num_holes(self) -> int:
         """Returns the number of holes in this pattern."""
         return (
             self.num_matcher_holes()
             + self.num_constraint_holes()
             + self.num_surface_holes()
+            + self.num_traversal_holes()
+            + self.num_query_holes()
         )
 
     def expand_leftmost_hole(self, vocabularies: Vocabularies) -> List[AstNode]:
@@ -235,7 +255,11 @@ class FieldConstraint(Constraint):
 
     def expand_leftmost_hole(self, vocabularies):
         if self.name.is_hole():
-            return [FieldConstraint(ExactMatcher(k), self.value) for k in vocabularies]
+            return [
+                FieldConstraint(ExactMatcher(k), self.value)
+                for k in vocabularies
+                if k != config.SYNTAX_FIELD
+            ]
         elif self.value.is_hole():
             return [
                 FieldConstraint(self.name, ExactMatcher(v))
@@ -590,3 +614,308 @@ class RepeatSurface(Surface):
 
     def preorder_traversal(self):
         return super().preorder_traversal() + self.surf.preorder_traversal()
+
+
+####################
+# traversal patterns
+####################
+
+class Traversal(AstNode):
+    pass
+
+class HoleTraversal(Traversal):
+    def __str__(self):
+        return config.HOLE_GLYPH
+
+    def __eq__(self, value):
+        return isinstance(value, HoleTraversal)
+
+    def is_hole(self):
+        return True
+
+    def num_traversal_holes(self):
+        return 1
+
+    def expand_leftmost_hole(self, vocabularies):
+        return [
+            IncomingTraversal(HoleMatcher()),
+            OutgoingTraversal(HoleMatcher()),
+            ConcatTraversal(HoleTraversal(), HoleTraversal()),
+            OrTraversal(HoleTraversal(), HoleTraversal()),
+            RepeatTraversal(HoleTraversal(), 0, 1),
+            RepeatTraversal(HoleTraversal(), 0, None),
+            RepeatTraversal(HoleTraversal(), 1, None),
+        ]
+
+class IncomingTraversal(Traversal):
+    def __init__(self, label: Matcher):
+        self.label = label
+
+    def __str__(self):
+        return f"<{self.label}"
+
+    def __eq__(self, value):
+        return isinstance(value, IncomingTraversal) and self.label == value.label
+
+    def has_holes(self):
+        return self.label.has_holes()
+
+    def tokens(self):
+        return ["<"] + self.label.tokens()
+
+    def num_matcher_holes(self):
+        return self.label.num_matcher_holes()
+
+    def num_traversal_holes(self):
+        return self.label.num_traversal_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.label.is_hole():
+            return [IncomingTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.label.preorder_traversal()
+
+class OutgoingTraversal(Traversal):
+    def __init__(self, label: Matcher):
+        self.label = label
+
+    def __str__(self):
+        return f">{self.label}"
+
+    def __eq__(self, value):
+        return isinstance(value, OutgoingTraversal) and self.label == value.label
+
+    def has_holes(self):
+        return self.label.has_holes()
+
+    def tokens(self):
+        return [">"] + self.label.tokens()
+
+    def num_matcher_holes(self):
+        return self.label.num_matcher_holes()
+
+    def num_traversal_holes(self):
+        return self.label.num_traversal_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.label.is_hole():
+            return [OutgoingTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.label.preorder_traversal()
+
+class ConcatTraversal(Traversal):
+    def __init__(self, lhs: Traversal, rhs: Traversal):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __str__(self):
+        lhs = maybe_parens(self.lhs, OrTraversal)
+        rhs = maybe_parens(self.rhs, OrTraversal)
+        return f"{lhs} {rhs}"
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, ConcatTraversal) and
+            self.lhs == value.lhs and
+            self.rhs == value.rhs
+        )
+
+    def has_holes(self):
+        return self.lhs.has_holes() or self.rhs.has_holes()
+
+    def tokens(self):
+        tokens = []
+        tokens += maybe_parens_tokens(self.lhs, OrTraversal)
+        tokens += maybe_parens_tokens(self.rhs, OrTraversal)
+        return tokens
+
+    def num_matcher_holes(self):
+        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
+
+    def num_traversal_holes(self):
+        return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.lhs.has_holes():
+            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            return [ConcatTraversal(n, self.rhs) for n in nodes]
+        elif self.rhs.has_holes():
+            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            return [ConcatTraversal(self.lhs, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.lhs.preorder_traversal() + self.rhs.preorder_traversal()
+
+class OrTraversal(Traversal):
+    def __init__(self, lhs: Traversal, rhs: Traversal):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __str__(self):
+        return f"{self.lhs} | {self.rhs}"
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, OrTraversal) and
+            self.lhs == value.lhs and
+            self.rhs == value.rhs
+        )
+
+    def has_holes(self):
+        return self.lhs.has_holes() or self.rhs.has_holes()
+
+    def tokens(self):
+        return self.lhs.tokens() + ["|"] + self.rhs.tokens()
+
+    def num_matcher_holes(self):
+        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
+
+    def num_traversal_holes(self):
+        return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.lhs.has_holes():
+            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            return [OrTraversal(n, self.rhs) for n in nodes]
+        elif self.rhs.has_holes():
+            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            return [OrTraversal(self.lhs, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.lhs.preorder_traversal() + self.rhs.preorder_traversal()
+
+class RepeatTraversal(Traversal):
+    def __init__(self, traversal: Traversal, min: int, max: Optional[int]):
+        self.traversal = traversal
+        self.min = min
+        self.max = max
+
+    def __str__(self):
+        traversal = maybe_parens(self.traversal, (ConcatTraversal, OrTraversal))
+        quant = make_quantifier(self.min, self.max)
+        return f"{traversal}{quant}"
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, RepeatTraversal) and
+            self.traversal == value.traversal and
+            self.min == value.min and
+            self.max == value.max
+        )
+
+    def has_holes(self):
+        return self.traversal.has_holes()
+
+    def tokens(self):
+        tokens = []
+        tokens += maybe_parens_tokens(self.traversal, (ConcatTraversal, OrTraversal))
+        tokens += make_quantifier_tokens(self.min, self.max)
+        return tokens
+    
+    def num_matcher_holes(self):
+        return self.traversal.num_matcher_holes()
+
+    def num_traversal_holes(self):
+        return self.traversal.num_traversal_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        nodes = self.traversal.expand_leftmost_hole(vocabularies)
+        nodes = [n for n in nodes if not isinstance(n, RepeatTraversal)]
+        return [RepeatTraversal(n, self.min, self.max) for n in nodes]
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.traversal.preorder_traversal()
+
+
+####################
+# query
+####################
+
+class Query(AstNode):
+    pass
+
+class HoleQuery(Query):
+    def __str__(self):
+        return config.HOLE_GLYPH
+
+    def __eq__(self, value):
+        return isinstance(value, HoleQuery)
+
+    def is_hole(self):
+        return True
+
+    def num_query_holes(self):
+        return 1
+
+    def expand_leftmost_hole(self, vocabularies):
+        if config.SYNTAX_FIELD in vocabularies:
+            return [
+                HoleSurface(),
+                HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
+            ]
+        else:
+            return [HoleSurface()]
+
+class HybridQuery(Query):
+    def __init__(self, src: Surface, traversal: Traversal, dst: AstNode):
+        self.src = src
+        self.dst = dst
+        self.traversal = traversal
+
+    def __str__(self):
+        return f"{self.src} {self.traversal} {self.dst}"
+
+    def __eq__(self, value):
+        return (
+            isinstance(value, HybridQuery) and
+            self.src == value.src and
+            self.dst == value.dst and
+            self.traversal == value.traversal
+        )
+
+    def has_holes(self):
+        return self.src.has_holes() or self.traversal.has_holes() or self.dst.has_holes()
+
+    def tokens(self):
+        return self.src.tokens() + self.traversal.tokens() + self.dst.tokens()
+
+    def num_matcher_holes(self):
+        return self.src.num_matcher_holes() + self.traversal.num_matcher_holes() + self.dst.num_matcher_holes()
+
+    def num_constraint_holes(self):
+        return self.src.num_constraint_holes() + self.traversal.num_constraint_holes() + self.dst.num_constraint_holes()
+
+    def num_surface_holes(self):
+        return self.src.num_surface_holes() + self.traversal.num_surface_holes() + self.dst.num_surface_holes()
+
+    def num_traversal_holes(self):
+        return self.src.num_traversal_holes() + self.traversal.num_traversal_holes() + self.dst.num_traversal_holes()
+
+    def num_query_holes(self):
+        return self.src.num_query_holes() + self.traversal.num_query_holes() + self.dst.num_query_holes()
+
+    def expand_leftmost_hole(self, vocabularies):
+        if self.src.has_holes():
+            nodes = self.src.expand_leftmost_hole(vocabularies)
+            return [HybridQuery(n, self.traversal, self.dst) for n in nodes]
+        elif self.traversal.has_holes():
+            nodes = self.traversal.expand_leftmost_hole(vocabularies)
+            return [HybridQuery(self.src, n, self.dst) for n in nodes]
+        elif self.dst.has_holes():
+            nodes = self.dst.expand_leftmost_hole(vocabularies)
+            return [HybridQuery(self.src, self.traversal, n) for n in nodes]
+        else:
+            return []
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.src.preorder_traversal() + self.traversal.preorder_traversal() + self.dst.preorder_traversal()
