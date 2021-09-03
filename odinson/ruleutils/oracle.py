@@ -146,6 +146,8 @@ def are_compatible(x: AstNode, y: AstNode) -> bool:
         return x.string == y.string
     elif isinstance(x, RepeatSurface) and isinstance(y, RepeatSurface):
         return x.min == y.min and x.max == y.max
+    elif isinstance(x, HoleSurface) and isinstance(y, Surface):
+        return True
     else:
         return type(x) == type(y)
 
