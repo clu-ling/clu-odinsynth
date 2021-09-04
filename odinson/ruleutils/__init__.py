@@ -10,6 +10,7 @@ try:
         "path_from_root",
         "random_surface",
         "random_traversal",
+        "random_hybrid",
         "random_query",
     ]
 
