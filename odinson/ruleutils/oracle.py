@@ -46,12 +46,15 @@ def random_traversal(vocabularies: Vocabularies, n_iters: int = 1) -> Traversal:
     tree = parse_traversal(str(tree))
     return tree
 
-def random_query(vocabularies: Vocabularies, n_iters: int = 1) -> Query:
+def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1) -> HybridQuery:
     return HybridQuery(
         random_surface(vocabularies, n_iters),
         random_traversal(vocabularies, n_iters),
-        random_surface(vocabularies, n_iters) if random.random() < 0.5 else random_query(vocabularies, n_iters),
+        random_query(vocabularies, n_iters),
     )
+
+def random_query(vocabularies: Vocabularies, n_iters: int = 1) -> AstNode:
+    return random_surface(vocabularies, n_iters) if random.random() < 0.5 else random_hybrid(vocabularies, n_iters)
 
 def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int) -> AstNode:
     tree = root
