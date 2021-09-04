@@ -39,6 +39,7 @@
         &#34;path_from_root&#34;,
         &#34;random_surface&#34;,
         &#34;random_traversal&#34;,
+        &#34;random_hybrid&#34;,
         &#34;random_query&#34;,
     ]
 
@@ -126,8 +127,8 @@ to the specified AstNode.</p></div>
     return list(oracle.traversal())</code></pre>
 </details>
 </dd>
-<dt id="odinson.ruleutils.random_query"><code class="name flex">
-<span>def <span class="ident">random_query</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.Query" href="queryast.html#odinson.ruleutils.queryast.Query">Query</a></span>
+<dt id="odinson.ruleutils.random_hybrid"><code class="name flex">
+<span>def <span class="ident">random_hybrid</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.HybridQuery" href="queryast.html#odinson.ruleutils.queryast.HybridQuery">HybridQuery</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -135,12 +136,25 @@ to the specified AstNode.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def random_query(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Query:
+<pre><code class="python">def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1) -&gt; HybridQuery:
     return HybridQuery(
         random_surface(vocabularies, n_iters),
         random_traversal(vocabularies, n_iters),
-        random_surface(vocabularies, n_iters) if random.random() &lt; 0.5 else random_query(vocabularies, n_iters),
+        random_query(vocabularies, n_iters),
     )</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.random_query"><code class="name flex">
+<span>def <span class="ident">random_query</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def random_query(vocabularies: Vocabularies, n_iters: int = 1) -&gt; AstNode:
+    return random_surface(vocabularies, n_iters) if random.random() &lt; 0.5 else random_hybrid(vocabularies, n_iters)</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.random_surface"><code class="name flex">
@@ -201,9 +215,10 @@ to the specified AstNode.</p></div>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
+<ul class="two-column">
 <li><code><a title="odinson.ruleutils.parse_odinson_query" href="#odinson.ruleutils.parse_odinson_query">parse_odinson_query</a></code></li>
 <li><code><a title="odinson.ruleutils.path_from_root" href="#odinson.ruleutils.path_from_root">path_from_root</a></code></li>
+<li><code><a title="odinson.ruleutils.random_hybrid" href="#odinson.ruleutils.random_hybrid">random_hybrid</a></code></li>
 <li><code><a title="odinson.ruleutils.random_query" href="#odinson.ruleutils.random_query">random_query</a></code></li>
 <li><code><a title="odinson.ruleutils.random_surface" href="#odinson.ruleutils.random_surface">random_surface</a></code></li>
 <li><code><a title="odinson.ruleutils.random_traversal" href="#odinson.ruleutils.random_traversal">random_traversal</a></code></li>

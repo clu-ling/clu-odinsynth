@@ -75,12 +75,15 @@ def random_traversal(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Travers
     tree = parse_traversal(str(tree))
     return tree
 
-def random_query(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Query:
+def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1) -&gt; HybridQuery:
     return HybridQuery(
         random_surface(vocabularies, n_iters),
         random_traversal(vocabularies, n_iters),
-        random_surface(vocabularies, n_iters) if random.random() &lt; 0.5 else random_query(vocabularies, n_iters),
+        random_query(vocabularies, n_iters),
     )
+
+def random_query(vocabularies: Vocabularies, n_iters: int = 1) -&gt; AstNode:
+    return random_surface(vocabularies, n_iters) if random.random() &lt; 0.5 else random_hybrid(vocabularies, n_iters)
 
 def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int) -&gt; AstNode:
     tree = root
@@ -286,8 +289,8 @@ to the specified AstNode.</p></div>
     return list(oracle.traversal())</code></pre>
 </details>
 </dd>
-<dt id="odinson.ruleutils.oracle.random_query"><code class="name flex">
-<span>def <span class="ident">random_query</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.Query" href="queryast.html#odinson.ruleutils.queryast.Query">Query</a></span>
+<dt id="odinson.ruleutils.oracle.random_hybrid"><code class="name flex">
+<span>def <span class="ident">random_hybrid</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.HybridQuery" href="queryast.html#odinson.ruleutils.queryast.HybridQuery">HybridQuery</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -295,12 +298,25 @@ to the specified AstNode.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def random_query(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Query:
+<pre><code class="python">def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1) -&gt; HybridQuery:
     return HybridQuery(
         random_surface(vocabularies, n_iters),
         random_traversal(vocabularies, n_iters),
-        random_surface(vocabularies, n_iters) if random.random() &lt; 0.5 else random_query(vocabularies, n_iters),
+        random_query(vocabularies, n_iters),
     )</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.oracle.random_query"><code class="name flex">
+<span>def <span class="ident">random_query</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def random_query(vocabularies: Vocabularies, n_iters: int = 1) -&gt; AstNode:
+    return random_surface(vocabularies, n_iters) if random.random() &lt; 0.5 else random_hybrid(vocabularies, n_iters)</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.oracle.random_surface"><code class="name flex">
@@ -513,6 +529,7 @@ to the specified AstNode.</p></div>
 <li><code><a title="odinson.ruleutils.oracle.are_compatible" href="#odinson.ruleutils.oracle.are_compatible">are_compatible</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.make_minimal_vocabularies" href="#odinson.ruleutils.oracle.make_minimal_vocabularies">make_minimal_vocabularies</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.path_from_root" href="#odinson.ruleutils.oracle.path_from_root">path_from_root</a></code></li>
+<li><code><a title="odinson.ruleutils.oracle.random_hybrid" href="#odinson.ruleutils.oracle.random_hybrid">random_hybrid</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.random_query" href="#odinson.ruleutils.oracle.random_query">random_query</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.random_surface" href="#odinson.ruleutils.oracle.random_surface">random_surface</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.random_traversal" href="#odinson.ruleutils.oracle.random_traversal">random_traversal</a></code></li>
