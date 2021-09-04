@@ -29,8 +29,12 @@
 </summary>
 <pre><code class="python">import re
 
-HOLE_GLYPH = &#34;\u25a1&#34;  # WHITE SQUARE
+SURFACE_HOLE_GLYPH = &#34;\u25a1&#34;    # WHITE SQUARE
+TRAVERSAL_HOLE_GLYPH = &#34;\u25b7&#34;  # WHITE RIGHT-POINTING TRIANGLE
+QUERY_HOLE_GLYPH = &#34;\u2344&#34;      # APL FUNCTIONAL SYMBOL QUAD GREATER-THAN
+
 IDENT_RE = re.compile(r&#34;^[a-zA-Z][a-zA-Z0-9_]*$&#34;)
+
 SYNTAX_FIELD = &#34;dependencies&#34;</code></pre>
 </details>
 </section>
