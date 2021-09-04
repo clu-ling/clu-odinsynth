@@ -171,7 +171,7 @@ class Matcher(AstNode):
 
 class HoleMatcher(Matcher):
     def __str__(self):
-        return config.HOLE_GLYPH
+        return config.SURFACE_HOLE_GLYPH
 
     def __eq__(self, value):
         return isinstance(value, HoleMatcher)
@@ -209,7 +209,7 @@ class Constraint(AstNode):
 
 class HoleConstraint(Constraint):
     def __str__(self):
-        return config.HOLE_GLYPH
+        return config.SURFACE_HOLE_GLYPH
 
     def __eq__(self, value):
         return isinstance(value, HoleConstraint)
@@ -416,7 +416,7 @@ class Surface(AstNode):
 
 class HoleSurface(Surface):
     def __str__(self):
-        return config.HOLE_GLYPH
+        return config.SURFACE_HOLE_GLYPH
 
     def __eq__(self, value):
         return isinstance(value, HoleSurface)
@@ -625,7 +625,7 @@ class Traversal(AstNode):
 
 class HoleTraversal(Traversal):
     def __str__(self):
-        return config.HOLE_GLYPH
+        return config.TRAVERSAL_HOLE_GLYPH
 
     def __eq__(self, value):
         return isinstance(value, HoleTraversal)
@@ -846,7 +846,7 @@ class Query(AstNode):
 
 class HoleQuery(Query):
     def __str__(self):
-        return config.HOLE_GLYPH
+        return config.QUERY_HOLE_GLYPH
 
     def __eq__(self, value):
         return isinstance(value, HoleQuery)
@@ -873,7 +873,10 @@ class HybridQuery(Query):
         self.traversal = traversal
 
     def __str__(self):
-        return f"{self.src} {self.traversal} {self.dst}"
+        src = maybe_parens(self.src, OrSurface)
+        dst = maybe_parens(self.dst, OrSurface)
+        traversal = maybe_parens(self.traversal, OrTraversal)
+        return f"{src} {traversal} {dst}"
 
     def __eq__(self, value):
         return (
@@ -887,7 +890,10 @@ class HybridQuery(Query):
         return self.src.has_holes() or self.traversal.has_holes() or self.dst.has_holes()
 
     def tokens(self):
-        return self.src.tokens() + self.traversal.tokens() + self.dst.tokens()
+        src = maybe_parens_tokens(self.src, OrSurface)
+        dst = maybe_parens_tokens(self.dst, OrSurface)
+        traversal = maybe_parens_tokens(self.traversal, OrTraversal)
+        return src + traversal + dst
 
     def num_matcher_holes(self):
         return self.src.num_matcher_holes() + self.traversal.num_matcher_holes() + self.dst.num_matcher_holes()

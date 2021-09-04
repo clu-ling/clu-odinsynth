@@ -18,7 +18,9 @@ open_bracket = Literal("[").suppress()
 close_bracket = Literal("]").suppress()
 
 # literal values
-hole = config.HOLE_GLYPH
+surface_hole = config.SURFACE_HOLE_GLYPH
+traversal_hole = config.TRAVERSAL_HOLE_GLYPH
+query_hole = config.QUERY_HOLE_GLYPH
 number = Word(nums).setParseAction(lambda t: int(t[0]))
 identifier = Word(alphas + "_", alphanums + "_")
 quoted_string = QuotedString('"', unquoteResults=True, escChar="\\")
@@ -52,14 +54,14 @@ quant_op.setParseAction(
 quantifier = quant_op | quant_range | quant_rep
 
 # a hole that can take the place of a matcher
-hole_matcher = Literal(hole).setParseAction(lambda t: HoleMatcher())
+hole_matcher = Literal(surface_hole).setParseAction(lambda t: HoleMatcher())
 # a matcher that compares tokens to a string (t[0])
 exact_matcher = string.setParseAction(lambda t: ExactMatcher(t[0]))
 # any matcher
 matcher = hole_matcher | exact_matcher
 
 # a hole that can take the place of a token constraint
-hole_constraint = Literal(hole).setParseAction(lambda t: HoleConstraint())
+hole_constraint = Literal(surface_hole).setParseAction(lambda t: HoleConstraint())
 
 # a constraint of the form `f=v` means that only tokens
 # that have a field `f` with a corresponding value of `v`
@@ -88,8 +90,8 @@ and_constraint.setParseAction(lambda t: AndConstraint(*t) if len(t) == 2 else t[
 or_constraint << (and_constraint + Optional(vbar + or_constraint))
 or_constraint.setParseAction(lambda t: OrConstraint(*t) if len(t) == 2 else t[0])
 
-# a hole that can take the place of a query
-hole_query = Literal(hole).setParseAction(lambda t: HoleSurface())
+# a hole that can take the place of a surface query
+hole_surface = Literal(surface_hole).setParseAction(lambda t: HoleSurface())
 
 # a token constraint surrounded by square brackets
 token_surface = open_bracket + or_constraint + close_bracket
@@ -100,7 +102,7 @@ or_surface = Forward()
 
 # an expression that represents a single query
 atomic_surface = (
-    hole_query | token_surface | open_parens + or_surface + close_parens
+    hole_surface | token_surface | open_parens + or_surface + close_parens
 )
 
 # a query with an optional quantifier
@@ -118,6 +120,9 @@ concat_surface.setParseAction(lambda t: ConcatSurface(*t) if len(t) == 2 else t[
 or_surface << (concat_surface + Optional(vbar + or_surface))
 or_surface.setParseAction(lambda t: OrSurface(*t) if len(t) == 2 else t[0])
 
+# a hole that can take the place of a traversal
+hole_traversal = Literal(traversal_hole).setParseAction(lambda t: HoleTraversal())
+
 # labeled incoming edge
 incoming_traversal = lt + matcher
 incoming_traversal.setParseAction(lambda t: IncomingTraversal(t[0]))
@@ -130,7 +135,7 @@ outgoing_traversal.setParseAction(lambda t: OutgoingTraversal(t[0]))
 or_traversal = Forward()
 
 # an expression that represents a single traversal
-atomic_traversal = incoming_traversal | outgoing_traversal | open_parens + or_traversal + close_parens
+atomic_traversal = hole_traversal | incoming_traversal | outgoing_traversal | open_parens + or_traversal + close_parens
 
 # a traversal with an optional quantifier
 repeat_traversal = atomic_traversal + Optional(quantifier)
@@ -145,18 +150,26 @@ concat_traversal.setParseAction(lambda t: ConcatTraversal(*t) if len(t) == 2 els
 or_traversal << (concat_traversal + Optional(vbar + or_traversal))
 or_traversal.setParseAction(lambda t: OrTraversal(*t) if len(t) == 2 else t[0])
 
+# a hole that can take the place of a hybrid query
+hole_query = Literal(query_hole).setParseAction(lambda t: HoleQuery())
+
+# forward declaration, defined below
+odinson_query = Forward()
+
 # a single surface or a hybrid (surface, traversal, surface)
 hybrid_query = Forward()
-hybrid_query << (or_surface + Optional(or_traversal + hybrid_query))
+hybrid_query << (or_surface + Optional(or_traversal + odinson_query))
 hybrid_query.setParseAction(lambda t: HybridQuery(*t) if len(t) == 3 else t[0])
 
+odinson_query << (hole_query | hybrid_query)
+
 # the top symbol of our grammar
-odinson_query = LineStart() + hybrid_query + LineEnd()
+top = LineStart() + odinson_query + LineEnd()
 
 
 def parse_odinson_query(pattern: Text) -> AstNode:
     """Gets a string and returns the corresponding AST."""
-    return odinson_query.parseString(pattern)[0]
+    return top.parseString(pattern)[0]
 
 def parse_traversal(pattern: Text) -> AstNode:
     """Gets a string and returns the corresponding AST."""
