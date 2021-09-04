@@ -71,22 +71,21 @@ def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int) -> AstN
 
         def is_improvement(c):
             qh = c.num_query_holes()
-            th = c.num_traversal_holes()
-            sh = c.num_surface_holes()
-            ch = c.num_constraint_holes()
-            mh = c.num_matcher_holes()
             if qh < query_holes:
                 return True
             if qh > query_holes:
                 return False
+            th = c.num_traversal_holes()
             if th < traversal_holes:
                 return True
             if th > traversal_holes:
                 return False
+            sh = c.num_surface_holes()
             if sh < surface_holes:
                 return True
             if sh > surface_holes:
                 return False
+            ch = c.num_constraint_holes()
             return ch <= constraint_holes
 
         # discard candidates that don't improve the tree
