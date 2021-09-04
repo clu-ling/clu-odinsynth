@@ -175,6 +175,8 @@ def are_compatible(x: AstNode, y: AstNode) -&gt; bool:
         return x.string == y.string
     elif isinstance(x, RepeatSurface) and isinstance(y, RepeatSurface):
         return x.min == y.min and x.max == y.max
+    elif isinstance(x, HoleSurface) and isinstance(y, Surface):
+        return True
     else:
         return type(x) == type(y)
 
@@ -221,6 +223,8 @@ because the nodes may contain holes.</p></div>
         return x.string == y.string
     elif isinstance(x, RepeatSurface) and isinstance(y, RepeatSurface):
         return x.min == y.min and x.max == y.max
+    elif isinstance(x, HoleSurface) and isinstance(y, Surface):
+        return True
     else:
         return type(x) == type(y)</code></pre>
 </details>
