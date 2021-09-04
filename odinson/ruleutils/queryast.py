@@ -171,7 +171,7 @@ class Matcher(AstNode):
 
 class HoleMatcher(Matcher):
     def __str__(self):
-        return config.HOLE_GLYPH
+        return config.SURFACE_HOLE_GLYPH
 
     def __eq__(self, value):
         return isinstance(value, HoleMatcher)
@@ -209,7 +209,7 @@ class Constraint(AstNode):
 
 class HoleConstraint(Constraint):
     def __str__(self):
-        return config.HOLE_GLYPH
+        return config.SURFACE_HOLE_GLYPH
 
     def __eq__(self, value):
         return isinstance(value, HoleConstraint)
@@ -416,7 +416,7 @@ class Surface(AstNode):
 
 class HoleSurface(Surface):
     def __str__(self):
-        return config.HOLE_GLYPH
+        return config.SURFACE_HOLE_GLYPH
 
     def __eq__(self, value):
         return isinstance(value, HoleSurface)
@@ -625,7 +625,7 @@ class Traversal(AstNode):
 
 class HoleTraversal(Traversal):
     def __str__(self):
-        return config.HOLE_GLYPH
+        return config.TRAVERSAL_HOLE_GLYPH
 
     def __eq__(self, value):
         return isinstance(value, HoleTraversal)
@@ -846,7 +846,7 @@ class Query(AstNode):
 
 class HoleQuery(Query):
     def __str__(self):
-        return config.HOLE_GLYPH
+        return config.QUERY_HOLE_GLYPH
 
     def __eq__(self, value):
         return isinstance(value, HoleQuery)
