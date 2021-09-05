@@ -65,7 +65,7 @@ def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int, allow_w
     for i in range(n_iters):
         if not tree.has_holes():
             break
-        candidates = tree.expand_leftmost_hole(vocabularies, allow_wildcards)
+        candidates = tree.expand_leftmost_hole(vocabularies, allow_wildcards=allow_wildcards)
         tree = random.choice(candidates)
     # now we start to fill all remaining holes
     while tree.has_holes():
@@ -95,7 +95,7 @@ def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int, allow_w
             return ch <= constraint_holes
 
         # discard candidates that don't improve the tree
-        candidates = tree.expand_leftmost_hole(vocabularies, allow_wildcards)
+        candidates = tree.expand_leftmost_hole(vocabularies, allow_wildcards=allow_wildcards)
         candidates = [c for c in candidates if is_improvement(c)]
         # pick from good candidates only
         tree = random.choice(candidates)
