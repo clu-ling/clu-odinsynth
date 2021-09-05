@@ -108,9 +108,7 @@ token_surface = token_wildcard | token_constraint
 or_surface = Forward()
 
 # an expression that represents a single query
-atomic_surface = (
-    hole_surface | token_surface | open_parens + or_surface + close_parens
-)
+atomic_surface = hole_surface | token_surface | open_parens + or_surface + close_parens
 
 # a query with an optional quantifier
 repeat_surface = atomic_surface + Optional(quantifier)
@@ -156,11 +154,18 @@ outgoing_traversal = outgoing_label | outgoing_wildcard
 or_traversal = Forward()
 
 # an expression that represents a single traversal
-atomic_traversal = hole_traversal | incoming_traversal | outgoing_traversal | open_parens + or_traversal + close_parens
+atomic_traversal = (
+    hole_traversal
+    | incoming_traversal
+    | outgoing_traversal
+    | open_parens + or_traversal + close_parens
+)
 
 # a traversal with an optional quantifier
 repeat_traversal = atomic_traversal + Optional(quantifier)
-repeat_traversal.setParseAction(lambda t: RepeatTraversal(t[0], *t[1]) if len(t) > 1 else t[0])
+repeat_traversal.setParseAction(
+    lambda t: RepeatTraversal(t[0], *t[1]) if len(t) > 1 else t[0]
+)
 
 # one or two traversals that must match consecutively
 concat_traversal = Forward()
@@ -191,6 +196,7 @@ top = LineStart() + odinson_query + LineEnd()
 def parse_odinson_query(pattern: Text) -> AstNode:
     """Gets a string and returns the corresponding AST."""
     return top.parseString(pattern)[0]
+
 
 def parse_traversal(pattern: Text) -> AstNode:
     """Gets a string and returns the corresponding AST."""

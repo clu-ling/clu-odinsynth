@@ -40,18 +40,25 @@ def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> Su
     tree = parse_odinson_query(str(tree))
     return tree
 
-def random_traversal(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> Traversal:
+
+def random_traversal(
+    vocabularies: Vocabularies, n_iters: int = 1, **kwargs
+) -> Traversal:
     tree = random_tree(HoleTraversal(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_traversal(str(tree))
     return tree
 
-def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> HybridQuery:
+
+def random_hybrid(
+    vocabularies: Vocabularies, n_iters: int = 1, **kwargs
+) -> HybridQuery:
     return HybridQuery(
         random_surface(vocabularies, n_iters, **kwargs),
         random_traversal(vocabularies, n_iters, **kwargs),
         random_query(vocabularies, n_iters, **kwargs),
     )
+
 
 def random_query(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> AstNode:
     if random.random() < 0.5:
@@ -59,7 +66,10 @@ def random_query(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> AstN
     else:
         return random_hybrid(vocabularies, n_iters, **kwargs)
 
-def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int, **kwargs) -> AstNode:
+
+def random_tree(
+    root: AstNode, vocabularies: Vocabularies, n_iters: int, **kwargs
+) -> AstNode:
     tree = root
     # for a few iterations pick randomly from all candidates
     for i in range(n_iters):

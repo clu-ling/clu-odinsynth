@@ -103,7 +103,9 @@ class AstNode:
             + self.num_query_holes()
         )
 
-    def expand_leftmost_hole(self, vocabularies: Vocabularies, **kwargs) -> List[AstNode]:
+    def expand_leftmost_hole(
+        self, vocabularies: Vocabularies, **kwargs
+    ) -> List[AstNode]:
         """
         If the pattern has holes then it returns the patterns obtained
         by expanding the leftmost hole.  If there are no holes then it
@@ -433,7 +435,7 @@ class HoleSurface(Surface):
             RepeatSurface(HoleSurface(), 0, None),
             RepeatSurface(HoleSurface(), 1, None),
         ]
-        if kwargs.get('allow_wildcards', True):
+        if kwargs.get("allow_wildcards", True):
             candidates.append(WildcardSurface())
         return candidates
 
@@ -628,8 +630,10 @@ class RepeatSurface(Surface):
 # traversal patterns
 ####################
 
+
 class Traversal(AstNode):
     pass
+
 
 class HoleTraversal(Traversal):
     def __str__(self):
@@ -651,12 +655,15 @@ class HoleTraversal(Traversal):
             RepeatTraversal(HoleTraversal(), 0, None),
             RepeatTraversal(HoleTraversal(), 1, None),
         ]
-        if kwargs.get('allow_wildcards', True):
-            candidates.extend([
-                IncomingWildcardTraversal(),
-                OutgoingWildcardTraversal(),
-            ])
+        if kwargs.get("allow_wildcards", True):
+            candidates.extend(
+                [
+                    IncomingWildcardTraversal(),
+                    OutgoingWildcardTraversal(),
+                ]
+            )
         return candidates
+
 
 class IncomingWildcardTraversal(Traversal):
     def __str__(self):
@@ -665,12 +672,14 @@ class IncomingWildcardTraversal(Traversal):
     def tokens(self):
         return ["<<"]
 
+
 class OutgoingWildcardTraversal(Traversal):
     def __str__(self):
         return ">>"
 
     def tokens(self):
         return [">>"]
+
 
 class IncomingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
@@ -706,6 +715,7 @@ class IncomingLabelTraversal(Traversal):
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()
 
+
 class OutgoingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
         self.label = label
@@ -740,6 +750,7 @@ class OutgoingLabelTraversal(Traversal):
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()
 
+
 class ConcatTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
@@ -752,9 +763,9 @@ class ConcatTraversal(Traversal):
 
     def __eq__(self, value):
         return (
-            isinstance(value, ConcatTraversal) and
-            self.lhs == value.lhs and
-            self.rhs == value.rhs
+            isinstance(value, ConcatTraversal)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
         )
 
     def has_holes(self):
@@ -783,7 +794,12 @@ class ConcatTraversal(Traversal):
             return []
 
     def preorder_traversal(self):
-        return super().preorder_traversal() + self.lhs.preorder_traversal() + self.rhs.preorder_traversal()
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )
+
 
 class OrTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
@@ -795,9 +811,9 @@ class OrTraversal(Traversal):
 
     def __eq__(self, value):
         return (
-            isinstance(value, OrTraversal) and
-            self.lhs == value.lhs and
-            self.rhs == value.rhs
+            isinstance(value, OrTraversal)
+            and self.lhs == value.lhs
+            and self.rhs == value.rhs
         )
 
     def has_holes(self):
@@ -823,7 +839,12 @@ class OrTraversal(Traversal):
             return []
 
     def preorder_traversal(self):
-        return super().preorder_traversal() + self.lhs.preorder_traversal() + self.rhs.preorder_traversal()
+        return (
+            super().preorder_traversal()
+            + self.lhs.preorder_traversal()
+            + self.rhs.preorder_traversal()
+        )
+
 
 class RepeatTraversal(Traversal):
     def __init__(self, traversal: Traversal, min: int, max: Optional[int]):
@@ -838,10 +859,10 @@ class RepeatTraversal(Traversal):
 
     def __eq__(self, value):
         return (
-            isinstance(value, RepeatTraversal) and
-            self.traversal == value.traversal and
-            self.min == value.min and
-            self.max == value.max
+            isinstance(value, RepeatTraversal)
+            and self.traversal == value.traversal
+            and self.min == value.min
+            and self.max == value.max
         )
 
     def has_holes(self):
@@ -852,7 +873,7 @@ class RepeatTraversal(Traversal):
         tokens += maybe_parens_tokens(self.traversal, (ConcatTraversal, OrTraversal))
         tokens += make_quantifier_tokens(self.min, self.max)
         return tokens
-    
+
     def num_matcher_holes(self):
         return self.traversal.num_matcher_holes()
 
@@ -872,8 +893,10 @@ class RepeatTraversal(Traversal):
 # query
 ####################
 
+
 class Query(AstNode):
     pass
+
 
 class HoleQuery(Query):
     def __str__(self):
@@ -891,6 +914,7 @@ class HoleQuery(Query):
             HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
         ]
 
+
 class HybridQuery(Query):
     def __init__(self, src: Surface, traversal: Traversal, dst: AstNode):
         self.src = src
@@ -905,14 +929,16 @@ class HybridQuery(Query):
 
     def __eq__(self, value):
         return (
-            isinstance(value, HybridQuery) and
-            self.src == value.src and
-            self.dst == value.dst and
-            self.traversal == value.traversal
+            isinstance(value, HybridQuery)
+            and self.src == value.src
+            and self.dst == value.dst
+            and self.traversal == value.traversal
         )
 
     def has_holes(self):
-        return self.src.has_holes() or self.traversal.has_holes() or self.dst.has_holes()
+        return (
+            self.src.has_holes() or self.traversal.has_holes() or self.dst.has_holes()
+        )
 
     def tokens(self):
         src = maybe_parens_tokens(self.src, OrSurface)
@@ -921,19 +947,39 @@ class HybridQuery(Query):
         return src + traversal + dst
 
     def num_matcher_holes(self):
-        return self.src.num_matcher_holes() + self.traversal.num_matcher_holes() + self.dst.num_matcher_holes()
+        return (
+            self.src.num_matcher_holes()
+            + self.traversal.num_matcher_holes()
+            + self.dst.num_matcher_holes()
+        )
 
     def num_constraint_holes(self):
-        return self.src.num_constraint_holes() + self.traversal.num_constraint_holes() + self.dst.num_constraint_holes()
+        return (
+            self.src.num_constraint_holes()
+            + self.traversal.num_constraint_holes()
+            + self.dst.num_constraint_holes()
+        )
 
     def num_surface_holes(self):
-        return self.src.num_surface_holes() + self.traversal.num_surface_holes() + self.dst.num_surface_holes()
+        return (
+            self.src.num_surface_holes()
+            + self.traversal.num_surface_holes()
+            + self.dst.num_surface_holes()
+        )
 
     def num_traversal_holes(self):
-        return self.src.num_traversal_holes() + self.traversal.num_traversal_holes() + self.dst.num_traversal_holes()
+        return (
+            self.src.num_traversal_holes()
+            + self.traversal.num_traversal_holes()
+            + self.dst.num_traversal_holes()
+        )
 
     def num_query_holes(self):
-        return self.src.num_query_holes() + self.traversal.num_query_holes() + self.dst.num_query_holes()
+        return (
+            self.src.num_query_holes()
+            + self.traversal.num_query_holes()
+            + self.dst.num_query_holes()
+        )
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.src.has_holes():
@@ -949,4 +995,9 @@ class HybridQuery(Query):
             return []
 
     def preorder_traversal(self):
-        return super().preorder_traversal() + self.src.preorder_traversal() + self.traversal.preorder_traversal() + self.dst.preorder_traversal()
+        return (
+            super().preorder_traversal()
+            + self.src.preorder_traversal()
+            + self.traversal.preorder_traversal()
+            + self.dst.preorder_traversal()
+        )
