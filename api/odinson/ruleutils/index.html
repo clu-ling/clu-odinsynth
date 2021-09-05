@@ -128,7 +128,7 @@ to the specified AstNode.</p></div>
 </details>
 </dd>
 <dt id="odinson.ruleutils.random_hybrid"><code class="name flex">
-<span>def <span class="ident">random_hybrid</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.HybridQuery" href="queryast.html#odinson.ruleutils.queryast.HybridQuery">HybridQuery</a></span>
+<span>def <span class="ident">random_hybrid</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1, **kwargs) ‑> <a title="odinson.ruleutils.queryast.HybridQuery" href="queryast.html#odinson.ruleutils.queryast.HybridQuery">HybridQuery</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -136,16 +136,16 @@ to the specified AstNode.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1) -&gt; HybridQuery:
+<pre><code class="python">def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; HybridQuery:
     return HybridQuery(
-        random_surface(vocabularies, n_iters),
-        random_traversal(vocabularies, n_iters),
-        random_query(vocabularies, n_iters),
+        random_surface(vocabularies, n_iters, **kwargs),
+        random_traversal(vocabularies, n_iters, **kwargs),
+        random_query(vocabularies, n_iters, **kwargs),
     )</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.random_query"><code class="name flex">
-<span>def <span class="ident">random_query</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
+<span>def <span class="ident">random_query</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1, **kwargs) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -153,12 +153,15 @@ to the specified AstNode.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def random_query(vocabularies: Vocabularies, n_iters: int = 1) -&gt; AstNode:
-    return random_surface(vocabularies, n_iters) if random.random() &lt; 0.5 else random_hybrid(vocabularies, n_iters)</code></pre>
+<pre><code class="python">def random_query(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; AstNode:
+    if random.random() &lt; 0.5:
+        return random_surface(vocabularies, n_iters, **kwargs)
+    else:
+        return random_hybrid(vocabularies, n_iters, **kwargs)</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.random_surface"><code class="name flex">
-<span>def <span class="ident">random_surface</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.Surface" href="queryast.html#odinson.ruleutils.queryast.Surface">Surface</a></span>
+<span>def <span class="ident">random_surface</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1, **kwargs) ‑> <a title="odinson.ruleutils.queryast.Surface" href="queryast.html#odinson.ruleutils.queryast.Surface">Surface</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -166,15 +169,15 @@ to the specified AstNode.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def random_surface(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Surface:
-    tree = random_tree(HoleSurface(), vocabularies, n_iters)
+<pre><code class="python">def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; Surface:
+    tree = random_tree(HoleSurface(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_odinson_query(str(tree))
     return tree</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.random_traversal"><code class="name flex">
-<span>def <span class="ident">random_traversal</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1) ‑> <a title="odinson.ruleutils.queryast.Traversal" href="queryast.html#odinson.ruleutils.queryast.Traversal">Traversal</a></span>
+<span>def <span class="ident">random_traversal</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1, **kwargs) ‑> <a title="odinson.ruleutils.queryast.Traversal" href="queryast.html#odinson.ruleutils.queryast.Traversal">Traversal</a></span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -182,8 +185,8 @@ to the specified AstNode.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def random_traversal(vocabularies: Vocabularies, n_iters: int = 1) -&gt; Traversal:
-    tree = random_tree(HoleTraversal(), vocabularies, n_iters)
+<pre><code class="python">def random_traversal(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; Traversal:
+    tree = random_tree(HoleTraversal(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_traversal(str(tree))
     return tree</code></pre>
