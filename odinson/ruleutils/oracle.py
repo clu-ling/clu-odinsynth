@@ -34,35 +34,38 @@ def path_from_root(
     return list(oracle.traversal())
 
 
-def random_surface(vocabularies: Vocabularies, n_iters: int = 1) -> Surface:
-    tree = random_tree(HoleSurface(), vocabularies, n_iters)
+def random_surface(vocabularies: Vocabularies, n_iters: int = 1, allow_wildcards: bool = True) -> Surface:
+    tree = random_tree(HoleSurface(), vocabularies, n_iters, allow_wildcards)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_odinson_query(str(tree))
     return tree
 
-def random_traversal(vocabularies: Vocabularies, n_iters: int = 1) -> Traversal:
-    tree = random_tree(HoleTraversal(), vocabularies, n_iters)
+def random_traversal(vocabularies: Vocabularies, n_iters: int = 1, allow_wildcards: bool = True) -> Traversal:
+    tree = random_tree(HoleTraversal(), vocabularies, n_iters, allow_wildcards)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_traversal(str(tree))
     return tree
 
-def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1) -> HybridQuery:
+def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1, allow_wildcards: bool = True) -> HybridQuery:
     return HybridQuery(
-        random_surface(vocabularies, n_iters),
-        random_traversal(vocabularies, n_iters),
-        random_query(vocabularies, n_iters),
+        random_surface(vocabularies, n_iters, allow_wildcards),
+        random_traversal(vocabularies, n_iters, allow_wildcards),
+        random_query(vocabularies, n_iters, allow_wildcards),
     )
 
-def random_query(vocabularies: Vocabularies, n_iters: int = 1) -> AstNode:
-    return random_surface(vocabularies, n_iters) if random.random() < 0.5 else random_hybrid(vocabularies, n_iters)
+def random_query(vocabularies: Vocabularies, n_iters: int = 1, allow_wildcards: bool = True) -> AstNode:
+    if random.random() < 0.5:
+        return random_surface(vocabularies, n_iters, allow_wildcards) 
+    else:
+        return random_hybrid(vocabularies, n_iters, allow_wildcards)
 
-def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int) -> AstNode:
+def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int, allow_wildcards: bool) -> AstNode:
     tree = root
     # for a few iterations pick randomly from all candidates
     for i in range(n_iters):
         if not tree.has_holes():
             break
-        candidates = tree.expand_leftmost_hole(vocabularies)
+        candidates = tree.expand_leftmost_hole(vocabularies, allow_wildcards)
         tree = random.choice(candidates)
     # now we start to fill all remaining holes
     while tree.has_holes():
@@ -92,7 +95,7 @@ def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int) -> AstN
             return ch <= constraint_holes
 
         # discard candidates that don't improve the tree
-        candidates = tree.expand_leftmost_hole(vocabularies)
+        candidates = tree.expand_leftmost_hole(vocabularies, allow_wildcards)
         candidates = [c for c in candidates if is_improvement(c)]
         # pick from good candidates only
         tree = random.choice(candidates)
