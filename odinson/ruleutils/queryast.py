@@ -49,6 +49,9 @@ class AstNode:
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self}>"
 
+    def __eq__(self, value):
+        return isinstance(value, type(self))
+
     def is_hole(self) -> bool:
         """Returns true if the node is a hole."""
         # most nodes are not holes,
@@ -100,7 +103,7 @@ class AstNode:
             + self.num_query_holes()
         )
 
-    def expand_leftmost_hole(self, vocabularies: Vocabularies) -> List[AstNode]:
+    def expand_leftmost_hole(self, vocabularies: Vocabularies, **kwargs) -> List[AstNode]:
         """
         If the pattern has holes then it returns the patterns obtained
         by expanding the leftmost hole.  If there are no holes then it
@@ -176,9 +179,6 @@ class HoleMatcher(Matcher):
     def __str__(self):
         return config.SURFACE_HOLE_GLYPH
 
-    def __eq__(self, value):
-        return isinstance(value, HoleMatcher)
-
     def is_hole(self):
         return True
 
@@ -214,16 +214,13 @@ class HoleConstraint(Constraint):
     def __str__(self):
         return config.SURFACE_HOLE_GLYPH
 
-    def __eq__(self, value):
-        return isinstance(value, HoleConstraint)
-
     def is_hole(self):
         return True
 
     def num_constraint_holes(self):
         return 1
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         return [
             FieldConstraint(HoleMatcher(), HoleMatcher()),
             NotConstraint(HoleConstraint()),
@@ -256,7 +253,7 @@ class FieldConstraint(Constraint):
     def num_matcher_holes(self):
         return self.name.num_matcher_holes() + self.value.num_matcher_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.name.is_hole():
             return [
                 FieldConstraint(ExactMatcher(k), self.value)
@@ -304,9 +301,9 @@ class NotConstraint(Constraint):
     def num_constraint_holes(self):
         return self.constraint.num_constraint_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         # get the next nodes for the nested constraint
-        nodes = self.constraint.expand_leftmost_hole(vocabularies)
+        nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         # avoid nesting negations
         return [NotConstraint(n) for n in nodes if not isinstance(n, NotConstraint)]
 
@@ -345,12 +342,12 @@ class AndConstraint(Constraint):
     def num_constraint_holes(self):
         return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
-            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            nodes = self.lhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [AndConstraint(n, self.rhs) for n in nodes]
         elif self.rhs.has_holes():
-            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            nodes = self.rhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [AndConstraint(self.lhs, n) for n in nodes]
         else:
             return []
@@ -390,12 +387,12 @@ class OrConstraint(Constraint):
     def num_constraint_holes(self):
         return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
-            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            nodes = self.lhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [OrConstraint(n, self.rhs) for n in nodes]
         elif self.rhs.has_holes():
-            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            nodes = self.rhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [OrConstraint(self.lhs, n) for n in nodes]
         else:
             return []
@@ -421,18 +418,14 @@ class HoleSurface(Surface):
     def __str__(self):
         return config.SURFACE_HOLE_GLYPH
 
-    def __eq__(self, value):
-        return isinstance(value, HoleSurface)
-
     def is_hole(self):
         return True
 
     def num_surface_holes(self):
         return 1
 
-    def expand_leftmost_hole(self, vocabularies):
-        return [
-            WildcardSurface(),
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
+        candidates = [
             TokenSurface(HoleConstraint()),
             ConcatSurface(HoleSurface(), HoleSurface()),
             OrSurface(HoleSurface(), HoleSurface()),
@@ -440,14 +433,14 @@ class HoleSurface(Surface):
             RepeatSurface(HoleSurface(), 0, None),
             RepeatSurface(HoleSurface(), 1, None),
         ]
+        if kwargs.get('allow_wildcards', True):
+            candidates.append(WildcardSurface())
+        return candidates
 
 
 class WildcardSurface(Surface):
     def __str__(self):
         return "[]"
-
-    def __eq__(self, value):
-        return isinstance(value, WildcardSurface)
 
     def tokens(self):
         return ["[", "]"]
@@ -475,8 +468,8 @@ class TokenSurface(Surface):
     def num_constraint_holes(self):
         return self.constraint.num_constraint_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
-        nodes = self.constraint.expand_leftmost_hole(vocabularies)
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
+        nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         return [TokenSurface(n) for n in nodes]
 
     def preorder_traversal(self):
@@ -518,12 +511,12 @@ class ConcatSurface(Surface):
     def num_surface_holes(self):
         return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
-            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            nodes = self.lhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [ConcatSurface(n, self.rhs) for n in nodes]
         elif self.rhs.has_holes():
-            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            nodes = self.rhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [ConcatSurface(self.lhs, n) for n in nodes]
         else:
             return []
@@ -566,12 +559,12 @@ class OrSurface(Surface):
     def num_surface_holes(self):
         return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
-            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            nodes = self.lhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [OrSurface(n, self.rhs) for n in nodes]
         elif self.rhs.has_holes():
-            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            nodes = self.rhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [OrSurface(self.lhs, n) for n in nodes]
         else:
             return []
@@ -621,8 +614,8 @@ class RepeatSurface(Surface):
     def num_surface_holes(self):
         return self.surf.num_surface_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
-        nodes = self.surf.expand_leftmost_hole(vocabularies)
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
+        nodes = self.surf.expand_leftmost_hole(vocabularies, **kwargs)
         # avoid nesting repetitions
         nodes = [n for n in nodes if not isinstance(n, RepeatSurface)]
         return [RepeatSurface(n, self.min, self.max) for n in nodes]
@@ -642,19 +635,14 @@ class HoleTraversal(Traversal):
     def __str__(self):
         return config.TRAVERSAL_HOLE_GLYPH
 
-    def __eq__(self, value):
-        return isinstance(value, HoleTraversal)
-
     def is_hole(self):
         return True
 
     def num_traversal_holes(self):
         return 1
 
-    def expand_leftmost_hole(self, vocabularies):
-        return [
-            IncomingWildcardTraversal(),
-            OutgoingWildcardTraversal(),
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
+        candidates = [
             IncomingLabelTraversal(HoleMatcher()),
             OutgoingLabelTraversal(HoleMatcher()),
             ConcatTraversal(HoleTraversal(), HoleTraversal()),
@@ -663,13 +651,16 @@ class HoleTraversal(Traversal):
             RepeatTraversal(HoleTraversal(), 0, None),
             RepeatTraversal(HoleTraversal(), 1, None),
         ]
+        if kwargs.get('allow_wildcards', True):
+            candidates.extend([
+                IncomingWildcardTraversal(),
+                OutgoingWildcardTraversal(),
+            ])
+        return candidates
 
 class IncomingWildcardTraversal(Traversal):
     def __str__(self):
         return "<<"
-
-    def __eq__(self, value):
-        return isinstance(value, IncomingWildcardTraversal)
 
     def tokens(self):
         return ["<<"]
@@ -677,9 +668,6 @@ class IncomingWildcardTraversal(Traversal):
 class OutgoingWildcardTraversal(Traversal):
     def __str__(self):
         return ">>"
-
-    def __eq__(self, value):
-        return isinstance(value, OutgoingWildcardTraversal)
 
     def tokens(self):
         return [">>"]
@@ -706,9 +694,12 @@ class IncomingLabelTraversal(Traversal):
     def num_traversal_holes(self):
         return self.label.num_traversal_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.label.is_hole():
-            return [IncomingLabelTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
+            return [
+                IncomingLabelTraversal(ExactMatcher(v))
+                for v in vocabularies.get(config.SYNTAX_FIELD, [])
+            ]
         else:
             return []
 
@@ -737,9 +728,12 @@ class OutgoingLabelTraversal(Traversal):
     def num_traversal_holes(self):
         return self.label.num_traversal_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.label.is_hole():
-            return [OutgoingLabelTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
+            return [
+                OutgoingLabelTraversal(ExactMatcher(v))
+                for v in vocabularies.get(config.SYNTAX_FIELD, [])
+            ]
         else:
             return []
 
@@ -778,12 +772,12 @@ class ConcatTraversal(Traversal):
     def num_traversal_holes(self):
         return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
-            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            nodes = self.lhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [ConcatTraversal(n, self.rhs) for n in nodes]
         elif self.rhs.has_holes():
-            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            nodes = self.rhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [ConcatTraversal(self.lhs, n) for n in nodes]
         else:
             return []
@@ -818,12 +812,12 @@ class OrTraversal(Traversal):
     def num_traversal_holes(self):
         return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
-            nodes = self.lhs.expand_leftmost_hole(vocabularies)
+            nodes = self.lhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [OrTraversal(n, self.rhs) for n in nodes]
         elif self.rhs.has_holes():
-            nodes = self.rhs.expand_leftmost_hole(vocabularies)
+            nodes = self.rhs.expand_leftmost_hole(vocabularies, **kwargs)
             return [OrTraversal(self.lhs, n) for n in nodes]
         else:
             return []
@@ -865,8 +859,8 @@ class RepeatTraversal(Traversal):
     def num_traversal_holes(self):
         return self.traversal.num_traversal_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
-        nodes = self.traversal.expand_leftmost_hole(vocabularies)
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
+        nodes = self.traversal.expand_leftmost_hole(vocabularies, **kwargs)
         nodes = [n for n in nodes if not isinstance(n, RepeatTraversal)]
         return [RepeatTraversal(n, self.min, self.max) for n in nodes]
 
@@ -885,16 +879,13 @@ class HoleQuery(Query):
     def __str__(self):
         return config.QUERY_HOLE_GLYPH
 
-    def __eq__(self, value):
-        return isinstance(value, HoleQuery)
-
     def is_hole(self):
         return True
 
     def num_query_holes(self):
         return 1
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         return [
             HoleSurface(),
             HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
@@ -944,15 +935,15 @@ class HybridQuery(Query):
     def num_query_holes(self):
         return self.src.num_query_holes() + self.traversal.num_query_holes() + self.dst.num_query_holes()
 
-    def expand_leftmost_hole(self, vocabularies):
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.src.has_holes():
-            nodes = self.src.expand_leftmost_hole(vocabularies)
+            nodes = self.src.expand_leftmost_hole(vocabularies, **kwargs)
             return [HybridQuery(n, self.traversal, self.dst) for n in nodes]
         elif self.traversal.has_holes():
-            nodes = self.traversal.expand_leftmost_hole(vocabularies)
+            nodes = self.traversal.expand_leftmost_hole(vocabularies, **kwargs)
             return [HybridQuery(self.src, n, self.dst) for n in nodes]
         elif self.dst.has_holes():
-            nodes = self.dst.expand_leftmost_hole(vocabularies)
+            nodes = self.dst.expand_leftmost_hole(vocabularies, **kwargs)
             return [HybridQuery(self.src, self.traversal, n) for n in nodes]
         else:
             return []
