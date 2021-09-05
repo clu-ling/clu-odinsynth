@@ -162,7 +162,7 @@ def make_minimal_vocabularies(node: AstNode) -> Vocabularies:
             name = n.name.string
             value = n.value.string
             vocabularies[name].add(value)
-        elif isinstance(n, (IncomingTraversal, OutgoingTraversal)):
+        elif isinstance(n, (IncomingLabelTraversal, OutgoingLabelTraversal)):
             label = n.label.string
             vocabularies[config.SYNTAX_FIELD].add(label)
     return {k: list(v) for k, v in vocabularies.items()}

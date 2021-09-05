@@ -19,14 +19,17 @@ __all__ = [
     "NotConstraint",
     "Surface",
     "HoleSurface",
+    "WildcardSurface",
     "TokenSurface",
     "ConcatSurface",
     "OrSurface",
     "RepeatSurface",
     "Traversal",
     "HoleTraversal",
-    "IncomingTraversal",
-    "OutgoingTraversal",
+    "IncomingLabelTraversal",
+    "OutgoingLabelTraversal",
+    "IncomingWildcardTraversal",
+    "OutgoingWildcardTraversal",
     "ConcatTraversal",
     "OrTraversal",
     "RepeatTraversal",
@@ -429,6 +432,7 @@ class HoleSurface(Surface):
 
     def expand_leftmost_hole(self, vocabularies):
         return [
+            WildcardSurface(),
             TokenSurface(HoleConstraint()),
             ConcatSurface(HoleSurface(), HoleSurface()),
             OrSurface(HoleSurface(), HoleSurface()),
@@ -436,6 +440,17 @@ class HoleSurface(Surface):
             RepeatSurface(HoleSurface(), 0, None),
             RepeatSurface(HoleSurface(), 1, None),
         ]
+
+
+class WildcardSurface(Surface):
+    def __str__(self):
+        return "[]"
+
+    def __eq__(self, value):
+        return isinstance(value, WildcardSurface)
+
+    def tokens(self):
+        return ["[", "]"]
 
 
 class TokenSurface(Surface):
@@ -638,8 +653,10 @@ class HoleTraversal(Traversal):
 
     def expand_leftmost_hole(self, vocabularies):
         return [
-            IncomingTraversal(HoleMatcher()),
-            OutgoingTraversal(HoleMatcher()),
+            IncomingWildcardTraversal(),
+            OutgoingWildcardTraversal(),
+            IncomingLabelTraversal(HoleMatcher()),
+            OutgoingLabelTraversal(HoleMatcher()),
             ConcatTraversal(HoleTraversal(), HoleTraversal()),
             OrTraversal(HoleTraversal(), HoleTraversal()),
             RepeatTraversal(HoleTraversal(), 0, 1),
@@ -647,7 +664,27 @@ class HoleTraversal(Traversal):
             RepeatTraversal(HoleTraversal(), 1, None),
         ]
 
-class IncomingTraversal(Traversal):
+class IncomingWildcardTraversal(Traversal):
+    def __str__(self):
+        return "<<"
+
+    def __eq__(self, value):
+        return isinstance(value, IncomingWildcardTraversal)
+
+    def tokens(self):
+        return ["<<"]
+
+class OutgoingWildcardTraversal(Traversal):
+    def __str__(self):
+        return ">>"
+
+    def __eq__(self, value):
+        return isinstance(value, OutgoingWildcardTraversal)
+
+    def tokens(self):
+        return [">>"]
+
+class IncomingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
         self.label = label
 
@@ -655,7 +692,7 @@ class IncomingTraversal(Traversal):
         return f"<{self.label}"
 
     def __eq__(self, value):
-        return isinstance(value, IncomingTraversal) and self.label == value.label
+        return isinstance(value, IncomingLabelTraversal) and self.label == value.label
 
     def has_holes(self):
         return self.label.has_holes()
@@ -671,14 +708,14 @@ class IncomingTraversal(Traversal):
 
     def expand_leftmost_hole(self, vocabularies):
         if self.label.is_hole():
-            return [IncomingTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
+            return [IncomingLabelTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
         else:
             return []
 
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()
 
-class OutgoingTraversal(Traversal):
+class OutgoingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
         self.label = label
 
@@ -686,7 +723,7 @@ class OutgoingTraversal(Traversal):
         return f">{self.label}"
 
     def __eq__(self, value):
-        return isinstance(value, OutgoingTraversal) and self.label == value.label
+        return isinstance(value, OutgoingLabelTraversal) and self.label == value.label
 
     def has_holes(self):
         return self.label.has_holes()
@@ -702,7 +739,7 @@ class OutgoingTraversal(Traversal):
 
     def expand_leftmost_hole(self, vocabularies):
         if self.label.is_hole():
-            return [OutgoingTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
+            return [OutgoingLabelTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
         else:
             return []
 
@@ -858,13 +895,10 @@ class HoleQuery(Query):
         return 1
 
     def expand_leftmost_hole(self, vocabularies):
-        if config.SYNTAX_FIELD in vocabularies:
-            return [
-                HoleSurface(),
-                HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
-            ]
-        else:
-            return [HoleSurface()]
+        return [
+            HoleSurface(),
+            HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
+        ]
 
 class HybridQuery(Query):
     def __init__(self, src: Surface, traversal: Traversal, dst: AstNode):
