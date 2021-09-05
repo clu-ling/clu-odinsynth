@@ -48,14 +48,17 @@ __all__ = [
     &#34;NotConstraint&#34;,
     &#34;Surface&#34;,
     &#34;HoleSurface&#34;,
+    &#34;WildcardSurface&#34;,
     &#34;TokenSurface&#34;,
     &#34;ConcatSurface&#34;,
     &#34;OrSurface&#34;,
     &#34;RepeatSurface&#34;,
     &#34;Traversal&#34;,
     &#34;HoleTraversal&#34;,
-    &#34;IncomingTraversal&#34;,
-    &#34;OutgoingTraversal&#34;,
+    &#34;IncomingLabelTraversal&#34;,
+    &#34;OutgoingLabelTraversal&#34;,
+    &#34;IncomingWildcardTraversal&#34;,
+    &#34;OutgoingWildcardTraversal&#34;,
     &#34;ConcatTraversal&#34;,
     &#34;OrTraversal&#34;,
     &#34;RepeatTraversal&#34;,
@@ -458,6 +461,7 @@ class HoleSurface(Surface):
 
     def expand_leftmost_hole(self, vocabularies):
         return [
+            WildcardSurface(),
             TokenSurface(HoleConstraint()),
             ConcatSurface(HoleSurface(), HoleSurface()),
             OrSurface(HoleSurface(), HoleSurface()),
@@ -465,6 +469,17 @@ class HoleSurface(Surface):
             RepeatSurface(HoleSurface(), 0, None),
             RepeatSurface(HoleSurface(), 1, None),
         ]
+
+
+class WildcardSurface(Surface):
+    def __str__(self):
+        return &#34;[]&#34;
+
+    def __eq__(self, value):
+        return isinstance(value, WildcardSurface)
+
+    def tokens(self):
+        return [&#34;[&#34;, &#34;]&#34;]
 
 
 class TokenSurface(Surface):
@@ -667,8 +682,10 @@ class HoleTraversal(Traversal):
 
     def expand_leftmost_hole(self, vocabularies):
         return [
-            IncomingTraversal(HoleMatcher()),
-            OutgoingTraversal(HoleMatcher()),
+            IncomingWildcardTraversal(),
+            OutgoingWildcardTraversal(),
+            IncomingLabelTraversal(HoleMatcher()),
+            OutgoingLabelTraversal(HoleMatcher()),
             ConcatTraversal(HoleTraversal(), HoleTraversal()),
             OrTraversal(HoleTraversal(), HoleTraversal()),
             RepeatTraversal(HoleTraversal(), 0, 1),
@@ -676,7 +693,27 @@ class HoleTraversal(Traversal):
             RepeatTraversal(HoleTraversal(), 1, None),
         ]
 
-class IncomingTraversal(Traversal):
+class IncomingWildcardTraversal(Traversal):
+    def __str__(self):
+        return &#34;&lt;&lt;&#34;
+
+    def __eq__(self, value):
+        return isinstance(value, IncomingWildcardTraversal)
+
+    def tokens(self):
+        return [&#34;&lt;&lt;&#34;]
+
+class OutgoingWildcardTraversal(Traversal):
+    def __str__(self):
+        return &#34;&gt;&gt;&#34;
+
+    def __eq__(self, value):
+        return isinstance(value, OutgoingWildcardTraversal)
+
+    def tokens(self):
+        return [&#34;&gt;&gt;&#34;]
+
+class IncomingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
         self.label = label
 
@@ -684,7 +721,7 @@ class IncomingTraversal(Traversal):
         return f&#34;&lt;{self.label}&#34;
 
     def __eq__(self, value):
-        return isinstance(value, IncomingTraversal) and self.label == value.label
+        return isinstance(value, IncomingLabelTraversal) and self.label == value.label
 
     def has_holes(self):
         return self.label.has_holes()
@@ -700,14 +737,14 @@ class IncomingTraversal(Traversal):
 
     def expand_leftmost_hole(self, vocabularies):
         if self.label.is_hole():
-            return [IncomingTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
+            return [IncomingLabelTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
         else:
             return []
 
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()
 
-class OutgoingTraversal(Traversal):
+class OutgoingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
         self.label = label
 
@@ -715,7 +752,7 @@ class OutgoingTraversal(Traversal):
         return f&#34;&gt;{self.label}&#34;
 
     def __eq__(self, value):
-        return isinstance(value, OutgoingTraversal) and self.label == value.label
+        return isinstance(value, OutgoingLabelTraversal) and self.label == value.label
 
     def has_holes(self):
         return self.label.has_holes()
@@ -731,7 +768,7 @@ class OutgoingTraversal(Traversal):
 
     def expand_leftmost_hole(self, vocabularies):
         if self.label.is_hole():
-            return [OutgoingTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
+            return [OutgoingLabelTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
         else:
             return []
 
@@ -887,13 +924,10 @@ class HoleQuery(Query):
         return 1
 
     def expand_leftmost_hole(self, vocabularies):
-        if config.SYNTAX_FIELD in vocabularies:
-            return [
-                HoleSurface(),
-                HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
-            ]
-        else:
-            return [HoleSurface()]
+        return [
+            HoleSurface(),
+            HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
+        ]
 
 class HybridQuery(Query):
     def __init__(self, src: Surface, traversal: Traversal, dst: AstNode):
@@ -1794,13 +1828,10 @@ returns an empty list.</p></div>
         return 1
 
     def expand_leftmost_hole(self, vocabularies):
-        if config.SYNTAX_FIELD in vocabularies:
-            return [
-                HoleSurface(),
-                HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
-            ]
-        else:
-            return [HoleSurface()]</code></pre>
+        return [
+            HoleSurface(),
+            HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
+        ]</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -1851,6 +1882,7 @@ returns an empty list.</p></div>
 
     def expand_leftmost_hole(self, vocabularies):
         return [
+            WildcardSurface(),
             TokenSurface(HoleConstraint()),
             ConcatSurface(HoleSurface(), HoleSurface()),
             OrSurface(HoleSurface(), HoleSurface()),
@@ -1908,8 +1940,10 @@ returns an empty list.</p></div>
 
     def expand_leftmost_hole(self, vocabularies):
         return [
-            IncomingTraversal(HoleMatcher()),
-            OutgoingTraversal(HoleMatcher()),
+            IncomingWildcardTraversal(),
+            OutgoingWildcardTraversal(),
+            IncomingLabelTraversal(HoleMatcher()),
+            OutgoingLabelTraversal(HoleMatcher()),
             ConcatTraversal(HoleTraversal(), HoleTraversal()),
             OrTraversal(HoleTraversal(), HoleTraversal()),
             RepeatTraversal(HoleTraversal(), 0, 1),
@@ -2037,8 +2071,8 @@ returns an empty list.</p></div>
 </li>
 </ul>
 </dd>
-<dt id="odinson.ruleutils.queryast.IncomingTraversal"><code class="flex name class">
-<span>class <span class="ident">IncomingTraversal</span></span>
+<dt id="odinson.ruleutils.queryast.IncomingLabelTraversal"><code class="flex name class">
+<span>class <span class="ident">IncomingLabelTraversal</span></span>
 <span>(</span><span>label: <a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a>)</span>
 </code></dt>
 <dd>
@@ -2047,7 +2081,7 @@ returns an empty list.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class IncomingTraversal(Traversal):
+<pre><code class="python">class IncomingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
         self.label = label
 
@@ -2055,7 +2089,7 @@ returns an empty list.</p></div>
         return f&#34;&lt;{self.label}&#34;
 
     def __eq__(self, value):
-        return isinstance(value, IncomingTraversal) and self.label == value.label
+        return isinstance(value, IncomingLabelTraversal) and self.label == value.label
 
     def has_holes(self):
         return self.label.has_holes()
@@ -2071,12 +2105,56 @@ returns an empty list.</p></div>
 
     def expand_leftmost_hole(self, vocabularies):
         if self.label.is_hole():
-            return [IncomingTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
+            return [IncomingLabelTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
         else:
             return []
 
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Traversal.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.IncomingWildcardTraversal"><code class="flex name class">
+<span>class <span class="ident">IncomingWildcardTraversal</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class IncomingWildcardTraversal(Traversal):
+    def __str__(self):
+        return &#34;&lt;&lt;&#34;
+
+    def __eq__(self, value):
+        return isinstance(value, IncomingWildcardTraversal)
+
+    def tokens(self):
+        return [&#34;&lt;&lt;&#34;]</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2449,8 +2527,8 @@ returns an empty list.</p></div>
 </li>
 </ul>
 </dd>
-<dt id="odinson.ruleutils.queryast.OutgoingTraversal"><code class="flex name class">
-<span>class <span class="ident">OutgoingTraversal</span></span>
+<dt id="odinson.ruleutils.queryast.OutgoingLabelTraversal"><code class="flex name class">
+<span>class <span class="ident">OutgoingLabelTraversal</span></span>
 <span>(</span><span>label: <a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a>)</span>
 </code></dt>
 <dd>
@@ -2459,7 +2537,7 @@ returns an empty list.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class OutgoingTraversal(Traversal):
+<pre><code class="python">class OutgoingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
         self.label = label
 
@@ -2467,7 +2545,7 @@ returns an empty list.</p></div>
         return f&#34;&gt;{self.label}&#34;
 
     def __eq__(self, value):
-        return isinstance(value, OutgoingTraversal) and self.label == value.label
+        return isinstance(value, OutgoingLabelTraversal) and self.label == value.label
 
     def has_holes(self):
         return self.label.has_holes()
@@ -2483,12 +2561,56 @@ returns an empty list.</p></div>
 
     def expand_leftmost_hole(self, vocabularies):
         if self.label.is_hole():
-            return [OutgoingTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
+            return [OutgoingLabelTraversal(ExactMatcher(v)) for v in vocabularies.get(config.SYNTAX_FIELD, [])]
         else:
             return []
 
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Traversal.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.OutgoingWildcardTraversal"><code class="flex name class">
+<span>class <span class="ident">OutgoingWildcardTraversal</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class OutgoingWildcardTraversal(Traversal):
+    def __str__(self):
+        return &#34;&gt;&gt;&#34;
+
+    def __eq__(self, value):
+        return isinstance(value, OutgoingWildcardTraversal)
+
+    def tokens(self):
+        return [&#34;&gt;&gt;&#34;]</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2737,6 +2859,7 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.OrSurface" href="#odinson.ruleutils.queryast.OrSurface">OrSurface</a></li>
 <li><a title="odinson.ruleutils.queryast.RepeatSurface" href="#odinson.ruleutils.queryast.RepeatSurface">RepeatSurface</a></li>
 <li><a title="odinson.ruleutils.queryast.TokenSurface" href="#odinson.ruleutils.queryast.TokenSurface">TokenSurface</a></li>
+<li><a title="odinson.ruleutils.queryast.WildcardSurface" href="#odinson.ruleutils.queryast.WildcardSurface">WildcardSurface</a></li>
 </ul>
 <h3>Inherited members</h3>
 <ul class="hlist">
@@ -2842,9 +2965,11 @@ returns an empty list.</p></div>
 <ul class="hlist">
 <li><a title="odinson.ruleutils.queryast.ConcatTraversal" href="#odinson.ruleutils.queryast.ConcatTraversal">ConcatTraversal</a></li>
 <li><a title="odinson.ruleutils.queryast.HoleTraversal" href="#odinson.ruleutils.queryast.HoleTraversal">HoleTraversal</a></li>
-<li><a title="odinson.ruleutils.queryast.IncomingTraversal" href="#odinson.ruleutils.queryast.IncomingTraversal">IncomingTraversal</a></li>
+<li><a title="odinson.ruleutils.queryast.IncomingLabelTraversal" href="#odinson.ruleutils.queryast.IncomingLabelTraversal">IncomingLabelTraversal</a></li>
+<li><a title="odinson.ruleutils.queryast.IncomingWildcardTraversal" href="#odinson.ruleutils.queryast.IncomingWildcardTraversal">IncomingWildcardTraversal</a></li>
 <li><a title="odinson.ruleutils.queryast.OrTraversal" href="#odinson.ruleutils.queryast.OrTraversal">OrTraversal</a></li>
-<li><a title="odinson.ruleutils.queryast.OutgoingTraversal" href="#odinson.ruleutils.queryast.OutgoingTraversal">OutgoingTraversal</a></li>
+<li><a title="odinson.ruleutils.queryast.OutgoingLabelTraversal" href="#odinson.ruleutils.queryast.OutgoingLabelTraversal">OutgoingLabelTraversal</a></li>
+<li><a title="odinson.ruleutils.queryast.OutgoingWildcardTraversal" href="#odinson.ruleutils.queryast.OutgoingWildcardTraversal">OutgoingWildcardTraversal</a></li>
 <li><a title="odinson.ruleutils.queryast.RepeatTraversal" href="#odinson.ruleutils.queryast.RepeatTraversal">RepeatTraversal</a></li>
 </ul>
 <h3>Inherited members</h3>
@@ -2863,6 +2988,50 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.WildcardSurface"><code class="flex name class">
+<span>class <span class="ident">WildcardSurface</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all AST nodes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class WildcardSurface(Surface):
+    def __str__(self):
+        return &#34;[]&#34;
+
+    def __eq__(self, value):
+        return isinstance(value, WildcardSurface)
+
+    def tokens(self):
+        return [&#34;[&#34;, &#34;]&#34;]</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Surface.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2937,7 +3106,10 @@ returns an empty list.</p></div>
 <h4><code><a title="odinson.ruleutils.queryast.HybridQuery" href="#odinson.ruleutils.queryast.HybridQuery">HybridQuery</a></code></h4>
 </li>
 <li>
-<h4><code><a title="odinson.ruleutils.queryast.IncomingTraversal" href="#odinson.ruleutils.queryast.IncomingTraversal">IncomingTraversal</a></code></h4>
+<h4><code><a title="odinson.ruleutils.queryast.IncomingLabelTraversal" href="#odinson.ruleutils.queryast.IncomingLabelTraversal">IncomingLabelTraversal</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.IncomingWildcardTraversal" href="#odinson.ruleutils.queryast.IncomingWildcardTraversal">IncomingWildcardTraversal</a></code></h4>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a></code></h4>
@@ -2955,7 +3127,10 @@ returns an empty list.</p></div>
 <h4><code><a title="odinson.ruleutils.queryast.OrTraversal" href="#odinson.ruleutils.queryast.OrTraversal">OrTraversal</a></code></h4>
 </li>
 <li>
-<h4><code><a title="odinson.ruleutils.queryast.OutgoingTraversal" href="#odinson.ruleutils.queryast.OutgoingTraversal">OutgoingTraversal</a></code></h4>
+<h4><code><a title="odinson.ruleutils.queryast.OutgoingLabelTraversal" href="#odinson.ruleutils.queryast.OutgoingLabelTraversal">OutgoingLabelTraversal</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.OutgoingWildcardTraversal" href="#odinson.ruleutils.queryast.OutgoingWildcardTraversal">OutgoingWildcardTraversal</a></code></h4>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.Query" href="#odinson.ruleutils.queryast.Query">Query</a></code></h4>
@@ -2974,6 +3149,9 @@ returns an empty list.</p></div>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.WildcardSurface" href="#odinson.ruleutils.queryast.WildcardSurface">WildcardSurface</a></code></h4>
 </li>
 </ul>
 </li>

@@ -123,8 +123,15 @@ or_constraint.setParseAction(lambda t: OrConstraint(*t) if len(t) == 2 else t[0]
 hole_surface = Literal(surface_hole).setParseAction(lambda t: HoleSurface())
 
 # a token constraint surrounded by square brackets
-token_surface = open_bracket + or_constraint + close_bracket
-token_surface.setParseAction(lambda t: TokenSurface(t[0]))
+token_constraint = open_bracket + or_constraint + close_bracket
+token_constraint.setParseAction(lambda t: TokenSurface(t[0]))
+
+# an unconstrained token
+token_wildcard = open_bracket + close_bracket
+token_wildcard.setParseAction(lambda t: WildcardSurface())
+
+# a token pattern
+token_surface = token_wildcard | token_constraint
 
 # forward declaration, defined below
 or_surface = Forward()
@@ -153,12 +160,26 @@ or_surface.setParseAction(lambda t: OrSurface(*t) if len(t) == 2 else t[0])
 hole_traversal = Literal(traversal_hole).setParseAction(lambda t: HoleTraversal())
 
 # labeled incoming edge
-incoming_traversal = lt + matcher
-incoming_traversal.setParseAction(lambda t: IncomingTraversal(t[0]))
+incoming_label = lt + matcher
+incoming_label.setParseAction(lambda t: IncomingLabelTraversal(t[0]))
+
+# any incoming edge
+incoming_wildcard = Literal(&#34;&lt;&lt;&#34;)
+incoming_wildcard.setParseAction(lambda t: IncomingWildcardTraversal())
+
+# an incoming edge
+incoming_traversal = incoming_label | incoming_wildcard
 
 # labeled outgoing edge
-outgoing_traversal = gt + matcher
-outgoing_traversal.setParseAction(lambda t: OutgoingTraversal(t[0]))
+outgoing_label = gt + matcher
+outgoing_label.setParseAction(lambda t: OutgoingLabelTraversal(t[0]))
+
+# any outgoing edge
+outgoing_wildcard = Literal(&#34;&gt;&gt;&#34;)
+outgoing_wildcard.setParseAction(lambda t: OutgoingWildcardTraversal())
+
+# an outgoing edge
+outgoing_traversal = outgoing_label | outgoing_wildcard
 
 # forward declaration, defined below
 or_traversal = Forward()
