@@ -69,18 +69,25 @@ def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt;
     tree = parse_odinson_query(str(tree))
     return tree
 
-def random_traversal(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; Traversal:
+
+def random_traversal(
+    vocabularies: Vocabularies, n_iters: int = 1, **kwargs
+) -&gt; Traversal:
     tree = random_tree(HoleTraversal(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_traversal(str(tree))
     return tree
 
-def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; HybridQuery:
+
+def random_hybrid(
+    vocabularies: Vocabularies, n_iters: int = 1, **kwargs
+) -&gt; HybridQuery:
     return HybridQuery(
         random_surface(vocabularies, n_iters, **kwargs),
         random_traversal(vocabularies, n_iters, **kwargs),
         random_query(vocabularies, n_iters, **kwargs),
     )
+
 
 def random_query(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; AstNode:
     if random.random() &lt; 0.5:
@@ -88,7 +95,10 @@ def random_query(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; A
     else:
         return random_hybrid(vocabularies, n_iters, **kwargs)
 
-def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int, **kwargs) -&gt; AstNode:
+
+def random_tree(
+    root: AstNode, vocabularies: Vocabularies, n_iters: int, **kwargs
+) -&gt; AstNode:
     tree = root
     # for a few iterations pick randomly from all candidates
     for i in range(n_iters):
@@ -301,7 +311,9 @@ to the specified AstNode.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def random_hybrid(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; HybridQuery:
+<pre><code class="python">def random_hybrid(
+    vocabularies: Vocabularies, n_iters: int = 1, **kwargs
+) -&gt; HybridQuery:
     return HybridQuery(
         random_surface(vocabularies, n_iters, **kwargs),
         random_traversal(vocabularies, n_iters, **kwargs),
@@ -350,7 +362,9 @@ to the specified AstNode.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def random_traversal(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; Traversal:
+<pre><code class="python">def random_traversal(
+    vocabularies: Vocabularies, n_iters: int = 1, **kwargs
+) -&gt; Traversal:
     tree = random_tree(HoleTraversal(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_traversal(str(tree))
@@ -366,7 +380,9 @@ to the specified AstNode.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def random_tree(root: AstNode, vocabularies: Vocabularies, n_iters: int, **kwargs) -&gt; AstNode:
+<pre><code class="python">def random_tree(
+    root: AstNode, vocabularies: Vocabularies, n_iters: int, **kwargs
+) -&gt; AstNode:
     tree = root
     # for a few iterations pick randomly from all candidates
     for i in range(n_iters):
