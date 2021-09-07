@@ -35,6 +35,8 @@ def path_from_root(
 
 
 def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> Surface:
+    if 'allow_wildcards' in kwargs:
+        kwargs['allow_surface_wildcards'] = kwargs['allow_wildcards']
     tree = random_tree(HoleSurface(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_odinson_query(str(tree))
@@ -44,6 +46,8 @@ def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> Su
 def random_traversal(
     vocabularies: Vocabularies, n_iters: int = 1, **kwargs
 ) -> Traversal:
+    if 'allow_wildcards' in kwargs:
+        kwargs['allow_traversal_wildcards'] = kwargs['allow_wildcards']
     tree = random_tree(HoleTraversal(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_traversal(str(tree))
