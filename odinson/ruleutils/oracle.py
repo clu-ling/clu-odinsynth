@@ -35,6 +35,14 @@ def path_from_root(
 
 
 def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> Surface:
+    if "allow_wildcards" in kwargs:
+        kwargs["allow_surface_wildcards"] = kwargs["allow_wildcards"]
+    if "allow_alternation" in kwargs:
+        kwargs["allow_surface_alternation"] = kwargs["allow_alternation"]
+    if "allow_concatenation" in kwargs:
+        kwargs["allow_surface_concatenation"] = kwargs["allow_concatenation"]
+    if "allow_repetition" in kwargs:
+        kwargs["allow_surface_repetition"] = kwargs["allow_repetition"]
     tree = random_tree(HoleSurface(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_odinson_query(str(tree))
@@ -44,6 +52,14 @@ def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> Su
 def random_traversal(
     vocabularies: Vocabularies, n_iters: int = 1, **kwargs
 ) -> Traversal:
+    if "allow_wildcards" in kwargs:
+        kwargs["allow_traversal_wildcards"] = kwargs["allow_wildcards"]
+    if "allow_alternation" in kwargs:
+        kwargs["allow_traversal_alternation"] = kwargs["allow_alternation"]
+    if "allow_concatenation" in kwargs:
+        kwargs["allow_traversal_concatenation"] = kwargs["allow_concatenation"]
+    if "allow_repetition" in kwargs:
+        kwargs["allow_traversal_repetition"] = kwargs["allow_repetition"]
     tree = random_tree(HoleTraversal(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_traversal(str(tree))
