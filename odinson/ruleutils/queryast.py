@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import json
+import itertools
 from typing import Dict, List, Optional, Text, Tuple, Type, Union
 from odinson.ruleutils import config
 
@@ -120,6 +121,7 @@ class AstNode:
         return [self]
 
     def permutations(self):
+        """Returns all trees that are equivalent to this AstNode."""
         return [self]
 
 
@@ -170,35 +172,29 @@ def make_quantifier_tokens(min: int, max: Optional[int]) -> List[Text]:
             return ["{", ",", str(max), "}"]
     return ["{", str(min), ",", str(max), "}"]
 
-def all_binary_trees(clauses, cls):
-    if len(clauses) == 1:
-        return clauses
+def all_binary_trees(nodes: List[AstNode], cls: Type) -> List[AstNode]:
+    """Returns all the binary trees of type `cls` that can be constructed
+    with the given nodes."""
+    if len(nodes) == 1:
+        return nodes
     trees = []
-    for i in range(1, len(clauses)):
-        for l in all_binary_trees(clauses[:i], cls):
-            for r in all_binary_trees(clauses[i:], cls):
+    for i in range(1, len(nodes)):
+        for l in all_binary_trees(nodes[:i], cls):
+            for r in all_binary_trees(nodes[i:], cls):
                 trees.append(cls(l, r))
     return trees
 
-def get_chains(clauses):
-    paths = [[c] for c in clauses[0]]
-    for i in range(1, len(clauses)):
-        new_paths = []
-        for c in clauses[i]:
-            new_paths += [[*p, c] for p in paths]
-        paths = new_paths
-    return paths
-
-def flatten(node, cls=None):
+def get_clauses(node, cls=None):
+    """Flattens and returns the clauses of the given node."""
     clauses = []
     if cls is None:
         cls = type(node)
     if isinstance(node.lhs, cls):
-        clauses += flatten(node.lhs)
+        clauses += get_clauses(node.lhs, cls)
     else:
         clauses.append(node.lhs)
     if isinstance(node.rhs, cls):
-        clauses += flatten(node.rhs)
+        clauses += get_clauses(node.rhs, cls)
     else:
         clauses.append(node.rhs)
     return clauses
@@ -402,9 +398,9 @@ class AndConstraint(Constraint):
 
     def permutations(self):
         results = []
-        perms = [c.permutations() for c in flatten(self)]
-        for chain in get_chains(perms):
-            results += all_binary_trees(chain, AndConstraint)
+        perms_per_node = [node.permutations() for node in get_clauses(self)]
+        for nodes in itertools.product(*perms_per_node):
+            results += all_binary_trees(nodes, AndConstraint)
         return results        
 
 
@@ -454,9 +450,9 @@ class OrConstraint(Constraint):
 
     def permutations(self):
         results = []
-        perms = [c.permutations() for c in flatten(self)]
-        for chain in get_chains(perms):
-            results += all_binary_trees(chain, OrConstraint)
+        perms_per_node = [node.permutations() for node in get_clauses(self)]
+        for nodes in itertools.product(*perms_per_node):
+            results += all_binary_trees(nodes, OrConstraint)
         return results        
 
 
@@ -595,9 +591,9 @@ class ConcatSurface(Surface):
 
     def permutations(self):
         results = []
-        perms = [c.permutations() for c in flatten(self)]
-        for chain in get_chains(perms):
-            results += all_binary_trees(chain, ConcatSurface)
+        perms_per_node = [node.permutations() for node in get_clauses(self)]
+        for nodes in itertools.product(*perms_per_node):
+            results += all_binary_trees(nodes, ConcatSurface)
         return results
 
 class OrSurface(Surface):
@@ -649,9 +645,9 @@ class OrSurface(Surface):
 
     def permutations(self):
         results = []
-        perms = [c.permutations() for c in flatten(self)]
-        for chain in get_chains(perms):
-            results += all_binary_trees(chain, OrSurface)
+        perms_per_node = [node.permutations() for node in get_clauses(self)]
+        for nodes in itertools.product(*perms_per_node):
+            results += all_binary_trees(nodes, OrSurface)
         return results
 
 
@@ -888,9 +884,9 @@ class ConcatTraversal(Traversal):
 
     def permutations(self):
         results = []
-        perms = [c.permutations() for c in flatten(self)]
-        for chain in get_chains(perms):
-            results += all_binary_trees(chain, ConcatTraversal)
+        perms_per_node = [node.permutations() for node in get_clauses(self)]
+        for nodes in itertools.product(*perms_per_node):
+            results += all_binary_trees(nodes, ConcatTraversal)
         return results        
 
 
@@ -940,9 +936,9 @@ class OrTraversal(Traversal):
 
     def permutations(self):
         results = []
-        perms = [c.permutations() for c in flatten(self)]
-        for chain in get_chains(perms):
-            results += all_binary_trees(chain, OrTraversal)
+        perms_per_node = [node.permutations() for node in get_clauses(self)]
+        for nodes in itertools.product(*perms_per_node):
+            results += all_binary_trees(nodes, OrTraversal)
         return results        
 
 
