@@ -458,14 +458,21 @@ class HoleSurface(Surface):
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         candidates = [
             TokenSurface(HoleConstraint()),
-            ConcatSurface(HoleSurface(), HoleSurface()),
-            OrSurface(HoleSurface(), HoleSurface()),
-            RepeatSurface(HoleSurface(), 0, 1),
-            RepeatSurface(HoleSurface(), 0, None),
-            RepeatSurface(HoleSurface(), 1, None),
         ]
-        if kwargs.get(&#34;allow_wildcards&#34;, True):
+        if kwargs.get(&#34;allow_surface_wildcards&#34;, True):
             candidates.append(WildcardSurface())
+        if kwargs.get(&#34;allow_surface_alternation&#34;, True):
+            candidates.append(OrSurface(HoleSurface(), HoleSurface()))
+        if kwargs.get(&#34;allow_surface_concatenation&#34;, True):
+            candidates.append(ConcatSurface(HoleSurface(), HoleSurface()))
+        if kwargs.get(&#34;allow_surface_repetition&#34;, True):
+            candidates.extend(
+                [
+                    RepeatSurface(HoleSurface(), 0, 1),
+                    RepeatSurface(HoleSurface(), 0, None),
+                    RepeatSurface(HoleSurface(), 1, None),
+                ]
+            )
         return candidates
 
 
@@ -678,17 +685,24 @@ class HoleTraversal(Traversal):
         candidates = [
             IncomingLabelTraversal(HoleMatcher()),
             OutgoingLabelTraversal(HoleMatcher()),
-            ConcatTraversal(HoleTraversal(), HoleTraversal()),
-            OrTraversal(HoleTraversal(), HoleTraversal()),
-            RepeatTraversal(HoleTraversal(), 0, 1),
-            RepeatTraversal(HoleTraversal(), 0, None),
-            RepeatTraversal(HoleTraversal(), 1, None),
         ]
-        if kwargs.get(&#34;allow_wildcards&#34;, True):
+        if kwargs.get(&#34;allow_traversal_wildcards&#34;, True):
             candidates.extend(
                 [
                     IncomingWildcardTraversal(),
                     OutgoingWildcardTraversal(),
+                ]
+            )
+        if kwargs.get(&#34;allow_traversal_alternation&#34;, True):
+            candidates.append(OrTraversal(HoleTraversal(), HoleTraversal()))
+        if kwargs.get(&#34;allow_traversal_concatenation&#34;, True):
+            candidates.append(ConcatTraversal(HoleTraversal(), HoleTraversal()))
+        if kwargs.get(&#34;allow_traversal_repetition&#34;, True):
+            candidates.extend(
+                [
+                    RepeatTraversal(HoleTraversal(), 0, 1),
+                    RepeatTraversal(HoleTraversal(), 0, None),
+                    RepeatTraversal(HoleTraversal(), 1, None),
                 ]
             )
         return candidates
@@ -1924,14 +1938,21 @@ returns an empty list.</p></div>
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         candidates = [
             TokenSurface(HoleConstraint()),
-            ConcatSurface(HoleSurface(), HoleSurface()),
-            OrSurface(HoleSurface(), HoleSurface()),
-            RepeatSurface(HoleSurface(), 0, 1),
-            RepeatSurface(HoleSurface(), 0, None),
-            RepeatSurface(HoleSurface(), 1, None),
         ]
-        if kwargs.get(&#34;allow_wildcards&#34;, True):
+        if kwargs.get(&#34;allow_surface_wildcards&#34;, True):
             candidates.append(WildcardSurface())
+        if kwargs.get(&#34;allow_surface_alternation&#34;, True):
+            candidates.append(OrSurface(HoleSurface(), HoleSurface()))
+        if kwargs.get(&#34;allow_surface_concatenation&#34;, True):
+            candidates.append(ConcatSurface(HoleSurface(), HoleSurface()))
+        if kwargs.get(&#34;allow_surface_repetition&#34;, True):
+            candidates.extend(
+                [
+                    RepeatSurface(HoleSurface(), 0, 1),
+                    RepeatSurface(HoleSurface(), 0, None),
+                    RepeatSurface(HoleSurface(), 1, None),
+                ]
+            )
         return candidates</code></pre>
 </details>
 <h3>Ancestors</h3>
@@ -1982,17 +2003,24 @@ returns an empty list.</p></div>
         candidates = [
             IncomingLabelTraversal(HoleMatcher()),
             OutgoingLabelTraversal(HoleMatcher()),
-            ConcatTraversal(HoleTraversal(), HoleTraversal()),
-            OrTraversal(HoleTraversal(), HoleTraversal()),
-            RepeatTraversal(HoleTraversal(), 0, 1),
-            RepeatTraversal(HoleTraversal(), 0, None),
-            RepeatTraversal(HoleTraversal(), 1, None),
         ]
-        if kwargs.get(&#34;allow_wildcards&#34;, True):
+        if kwargs.get(&#34;allow_traversal_wildcards&#34;, True):
             candidates.extend(
                 [
                     IncomingWildcardTraversal(),
                     OutgoingWildcardTraversal(),
+                ]
+            )
+        if kwargs.get(&#34;allow_traversal_alternation&#34;, True):
+            candidates.append(OrTraversal(HoleTraversal(), HoleTraversal()))
+        if kwargs.get(&#34;allow_traversal_concatenation&#34;, True):
+            candidates.append(ConcatTraversal(HoleTraversal(), HoleTraversal()))
+        if kwargs.get(&#34;allow_traversal_repetition&#34;, True):
+            candidates.extend(
+                [
+                    RepeatTraversal(HoleTraversal(), 0, 1),
+                    RepeatTraversal(HoleTraversal(), 0, None),
+                    RepeatTraversal(HoleTraversal(), 1, None),
                 ]
             )
         return candidates</code></pre>
