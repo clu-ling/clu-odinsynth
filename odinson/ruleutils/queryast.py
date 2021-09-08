@@ -437,11 +437,13 @@ class HoleSurface(Surface):
         if kwargs.get("allow_surface_concatenation", True):
             candidates.append(ConcatSurface(HoleSurface(), HoleSurface()))
         if kwargs.get("allow_surface_repetition", True):
-            candidates.extend([
-                RepeatSurface(HoleSurface(), 0, 1),
-                RepeatSurface(HoleSurface(), 0, None),
-                RepeatSurface(HoleSurface(), 1, None),
-            ])
+            candidates.extend(
+                [
+                    RepeatSurface(HoleSurface(), 0, 1),
+                    RepeatSurface(HoleSurface(), 0, None),
+                    RepeatSurface(HoleSurface(), 1, None),
+                ]
+            )
         return candidates
 
 
@@ -667,11 +669,13 @@ class HoleTraversal(Traversal):
         if kwargs.get("allow_traversal_concatenation", True):
             candidates.append(ConcatTraversal(HoleTraversal(), HoleTraversal()))
         if kwargs.get("allow_traversal_repetition", True):
-            candidates.extend([
-                RepeatTraversal(HoleTraversal(), 0, 1),
-                RepeatTraversal(HoleTraversal(), 0, None),
-                RepeatTraversal(HoleTraversal(), 1, None),
-            ])
+            candidates.extend(
+                [
+                    RepeatTraversal(HoleTraversal(), 0, 1),
+                    RepeatTraversal(HoleTraversal(), 0, None),
+                    RepeatTraversal(HoleTraversal(), 1, None),
+                ]
+            )
         return candidates
 
 
