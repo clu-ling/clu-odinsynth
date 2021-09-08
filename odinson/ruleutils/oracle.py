@@ -9,6 +9,13 @@ from odinson.ruleutils import config
 Vocabularies = Dict[Text, List[Text]]
 
 
+def all_paths_from_root(target: AstNode, vocabularies: Optional[Vocabularies] = None) -> List[List[AstNode]]:
+    results = []
+    for p in target.permutations():
+        results.append(path_from_root(p, vocabularies))
+    return results
+
+
 def path_from_root(
     target: AstNode, vocabularies: Optional[Vocabularies] = None
 ) -> List[AstNode]:

@@ -119,6 +119,9 @@ class AstNode:
         # default implementation is for nodes that have no children
         return [self]
 
+    def permutations(self):
+        return [self]
+
 
 # type alias
 Types = Type[Union[AstNode, Tuple[AstNode]]]
@@ -166,6 +169,39 @@ def make_quantifier_tokens(min: int, max: Optional[int]) -> List[Text]:
         else:
             return ["{", ",", str(max), "}"]
     return ["{", str(min), ",", str(max), "}"]
+
+def all_binary_trees(clauses, cls):
+    if len(clauses) == 1:
+        return clauses
+    trees = []
+    for i in range(1, len(clauses)):
+        for l in all_binary_trees(clauses[:i], cls):
+            for r in all_binary_trees(clauses[i:], cls):
+                trees.append(cls(l, r))
+    return trees
+
+def get_chains(clauses):
+    paths = [[c] for c in clauses[0]]
+    for i in range(1, len(clauses)):
+        new_paths = []
+        for c in clauses[i]:
+            new_paths += [[*p, c] for p in paths]
+        paths = new_paths
+    return paths
+
+def flatten(node, cls=None):
+    clauses = []
+    if cls is None:
+        cls = type(node)
+    if isinstance(node.lhs, cls):
+        clauses += flatten(node.lhs)
+    else:
+        clauses.append(node.lhs)
+    if isinstance(node.rhs, cls):
+        clauses += flatten(node.rhs)
+    else:
+        clauses.append(node.rhs)
+    return clauses
 
 
 ####################
@@ -312,6 +348,9 @@ class NotConstraint(Constraint):
     def preorder_traversal(self):
         return super().preorder_traversal() + self.constraint.preorder_traversal()
 
+    def permutations(self):
+        return [NotConstraint(p) for p in self.constraint.permutations()]
+
 
 class AndConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
@@ -361,6 +400,13 @@ class AndConstraint(Constraint):
             + self.rhs.preorder_traversal()
         )
 
+    def permutations(self):
+        results = []
+        perms = [c.permutations() for c in flatten(self)]
+        for chain in get_chains(perms):
+            results += all_binary_trees(chain, AndConstraint)
+        return results        
+
 
 class OrConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
@@ -405,6 +451,13 @@ class OrConstraint(Constraint):
             + self.lhs.preorder_traversal()
             + self.rhs.preorder_traversal()
         )
+
+    def permutations(self):
+        results = []
+        perms = [c.permutations() for c in flatten(self)]
+        for chain in get_chains(perms):
+            results += all_binary_trees(chain, OrConstraint)
+        return results        
 
 
 ####################
@@ -484,6 +537,9 @@ class TokenSurface(Surface):
     def preorder_traversal(self):
         return super().preorder_traversal() + self.constraint.preorder_traversal()
 
+    def permutations(self):
+        return [TokenSurface(p) for p in self.constraint.permutations()]
+
 
 class ConcatSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
@@ -537,6 +593,12 @@ class ConcatSurface(Surface):
             + self.rhs.preorder_traversal()
         )
 
+    def permutations(self):
+        results = []
+        perms = [c.permutations() for c in flatten(self)]
+        for chain in get_chains(perms):
+            results += all_binary_trees(chain, ConcatSurface)
+        return results
 
 class OrSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
@@ -585,6 +647,13 @@ class OrSurface(Surface):
             + self.rhs.preorder_traversal()
         )
 
+    def permutations(self):
+        results = []
+        perms = [c.permutations() for c in flatten(self)]
+        for chain in get_chains(perms):
+            results += all_binary_trees(chain, OrSurface)
+        return results
+
 
 class RepeatSurface(Surface):
     def __init__(self, surf: Surface, min: int, max: Optional[int]):
@@ -631,6 +700,9 @@ class RepeatSurface(Surface):
 
     def preorder_traversal(self):
         return super().preorder_traversal() + self.surf.preorder_traversal()
+
+    def permutations(self):
+        return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]
 
 
 ####################
@@ -814,6 +886,13 @@ class ConcatTraversal(Traversal):
             + self.rhs.preorder_traversal()
         )
 
+    def permutations(self):
+        results = []
+        perms = [c.permutations() for c in flatten(self)]
+        for chain in get_chains(perms):
+            results += all_binary_trees(chain, ConcatTraversal)
+        return results        
+
 
 class OrTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
@@ -859,6 +938,13 @@ class OrTraversal(Traversal):
             + self.rhs.preorder_traversal()
         )
 
+    def permutations(self):
+        results = []
+        perms = [c.permutations() for c in flatten(self)]
+        for chain in get_chains(perms):
+            results += all_binary_trees(chain, OrTraversal)
+        return results        
+
 
 class RepeatTraversal(Traversal):
     def __init__(self, traversal: Traversal, min: int, max: Optional[int]):
@@ -901,6 +987,9 @@ class RepeatTraversal(Traversal):
 
     def preorder_traversal(self):
         return super().preorder_traversal() + self.traversal.preorder_traversal()
+
+    def permutations(self):
+        return [RepeatTraversal(p, self.min, self.max) for p in self.traversal.permutations()]
 
 
 ####################
@@ -1015,3 +1104,11 @@ class HybridQuery(Query):
             + self.traversal.preorder_traversal()
             + self.dst.preorder_traversal()
         )
+
+    def permutations(self):
+        return [
+            HybridQuery(src, traversal, dst)
+            for src in self.src.permutations()
+            for traversal in self.traversal.permutations()
+            for dst in self.dst.permutations()
+        ]
