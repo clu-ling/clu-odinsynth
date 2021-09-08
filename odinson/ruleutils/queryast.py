@@ -120,7 +120,7 @@ class AstNode:
         # default implementation is for nodes that have no children
         return [self]
 
-    def permutations(self):
+    def permutations(self) -> List[AstNode]:
         """Returns all trees that are equivalent to this AstNode."""
         return [self]
 
