@@ -172,6 +172,7 @@ def make_quantifier_tokens(min: int, max: Optional[int]) -> List[Text]:
             return ["{", ",", str(max), "}"]
     return ["{", str(min), ",", str(max), "}"]
 
+
 def all_binary_trees(nodes: List[AstNode], cls: Type) -> List[AstNode]:
     """Returns all the binary trees of type `cls` that can be constructed
     with the given nodes."""
@@ -183,6 +184,7 @@ def all_binary_trees(nodes: List[AstNode], cls: Type) -> List[AstNode]:
             for r in all_binary_trees(nodes[i:], cls):
                 trees.append(cls(l, r))
     return trees
+
 
 def get_clauses(node, cls=None):
     """Flattens and returns the clauses of the given node."""
@@ -401,7 +403,7 @@ class AndConstraint(Constraint):
         perms_per_node = [node.permutations() for node in get_clauses(self)]
         for nodes in itertools.product(*perms_per_node):
             results += all_binary_trees(nodes, AndConstraint)
-        return results        
+        return results
 
 
 class OrConstraint(Constraint):
@@ -453,7 +455,7 @@ class OrConstraint(Constraint):
         perms_per_node = [node.permutations() for node in get_clauses(self)]
         for nodes in itertools.product(*perms_per_node):
             results += all_binary_trees(nodes, OrConstraint)
-        return results        
+        return results
 
 
 ####################
@@ -595,6 +597,7 @@ class ConcatSurface(Surface):
         for nodes in itertools.product(*perms_per_node):
             results += all_binary_trees(nodes, ConcatSurface)
         return results
+
 
 class OrSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
@@ -887,7 +890,7 @@ class ConcatTraversal(Traversal):
         perms_per_node = [node.permutations() for node in get_clauses(self)]
         for nodes in itertools.product(*perms_per_node):
             results += all_binary_trees(nodes, ConcatTraversal)
-        return results        
+        return results
 
 
 class OrTraversal(Traversal):
@@ -939,7 +942,7 @@ class OrTraversal(Traversal):
         perms_per_node = [node.permutations() for node in get_clauses(self)]
         for nodes in itertools.product(*perms_per_node):
             results += all_binary_trees(nodes, OrTraversal)
-        return results        
+        return results
 
 
 class RepeatTraversal(Traversal):
@@ -985,7 +988,10 @@ class RepeatTraversal(Traversal):
         return super().preorder_traversal() + self.traversal.preorder_traversal()
 
     def permutations(self):
-        return [RepeatTraversal(p, self.min, self.max) for p in self.traversal.permutations()]
+        return [
+            RepeatTraversal(p, self.min, self.max)
+            for p in self.traversal.permutations()
+        ]
 
 
 ####################

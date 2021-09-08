@@ -9,7 +9,10 @@ from odinson.ruleutils import config
 Vocabularies = Dict[Text, List[Text]]
 
 
-def all_paths_from_root(target: AstNode, vocabularies: Optional[Vocabularies] = None) -> List[List[AstNode]]:
+def all_paths_from_root(
+    target: AstNode, vocabularies: Optional[Vocabularies] = None
+) -> List[List[AstNode]]:
+    """Returns all episodes that render an equivalent rule to target."""
     results = []
     for p in target.permutations():
         results.append(path_from_root(p, vocabularies))
