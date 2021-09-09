@@ -202,6 +202,16 @@ def get_clauses(node, cls=None):
     return clauses
 
 
+def get_all_trees(node: AstNode) -> List[AstNode]:
+    """Returns all equivalent trees to node."""
+    results = []
+    cls = type(node)
+    perms_per_clause = [c.permutations() for c in get_clauses(node)]
+    for clauses in itertools.product(*perms_per_clause):
+        results += all_binary_trees(clauses, cls)
+    return results
+
+
 ####################
 # string matchers
 ####################
@@ -399,11 +409,7 @@ class AndConstraint(Constraint):
         )
 
     def permutations(self):
-        results = []
-        perms_per_node = [node.permutations() for node in get_clauses(self)]
-        for nodes in itertools.product(*perms_per_node):
-            results += all_binary_trees(nodes, AndConstraint)
-        return results
+        return get_all_trees(self)
 
 
 class OrConstraint(Constraint):
@@ -451,11 +457,7 @@ class OrConstraint(Constraint):
         )
 
     def permutations(self):
-        results = []
-        perms_per_node = [node.permutations() for node in get_clauses(self)]
-        for nodes in itertools.product(*perms_per_node):
-            results += all_binary_trees(nodes, OrConstraint)
-        return results
+        return get_all_trees(self)
 
 
 ####################
@@ -590,11 +592,7 @@ class ConcatSurface(Surface):
         )
 
     def permutations(self):
-        results = []
-        perms_per_node = [node.permutations() for node in get_clauses(self)]
-        for nodes in itertools.product(*perms_per_node):
-            results += all_binary_trees(nodes, ConcatSurface)
-        return results
+        return get_all_trees(self)
 
 
 class OrSurface(Surface):
@@ -645,11 +643,7 @@ class OrSurface(Surface):
         )
 
     def permutations(self):
-        results = []
-        perms_per_node = [node.permutations() for node in get_clauses(self)]
-        for nodes in itertools.product(*perms_per_node):
-            results += all_binary_trees(nodes, OrSurface)
-        return results
+        return get_all_trees(self)
 
 
 class RepeatSurface(Surface):
@@ -880,11 +874,7 @@ class ConcatTraversal(Traversal):
         )
 
     def permutations(self):
-        results = []
-        perms_per_node = [node.permutations() for node in get_clauses(self)]
-        for nodes in itertools.product(*perms_per_node):
-            results += all_binary_trees(nodes, ConcatTraversal)
-        return results
+        return get_all_trees(self)
 
 
 class OrTraversal(Traversal):
@@ -932,11 +922,7 @@ class OrTraversal(Traversal):
         )
 
     def permutations(self):
-        results = []
-        perms_per_node = [node.permutations() for node in get_clauses(self)]
-        for nodes in itertools.product(*perms_per_node):
-            results += all_binary_trees(nodes, OrTraversal)
-        return results
+        return get_all_trees(self)
 
 
 class RepeatTraversal(Traversal):
