@@ -37,6 +37,7 @@
     __all__ = [
         &#34;parse_odinson_query&#34;,
         &#34;path_from_root&#34;,
+        &#34;all_paths_from_root&#34;,
         &#34;random_surface&#34;,
         &#34;random_traversal&#34;,
         &#34;random_hybrid&#34;,
@@ -78,6 +79,25 @@ except Exception as e:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="odinson.ruleutils.all_paths_from_root"><code class="name flex">
+<span>def <span class="ident">all_paths_from_root</span></span>(<span>target: <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>, vocabularies: Union[Dict[str, List[str]], NoneType] = None) ‑> List[List[<a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns all episodes that render an equivalent rule to target.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def all_paths_from_root(
+    target: AstNode, vocabularies: Optional[Vocabularies] = None
+) -&gt; List[List[AstNode]]:
+    &#34;&#34;&#34;Returns all episodes that render an equivalent rule to target.&#34;&#34;&#34;
+    results = []
+    for p in target.permutations():
+        results.append(path_from_root(p, vocabularies))
+    return results</code></pre>
+</details>
+</dd>
 <dt id="odinson.ruleutils.parse_odinson_query"><code class="name flex">
 <span>def <span class="ident">parse_odinson_query</span></span>(<span>pattern: str) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
 </code></dt>
@@ -239,6 +259,7 @@ to the specified AstNode.</p></div>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="two-column">
+<li><code><a title="odinson.ruleutils.all_paths_from_root" href="#odinson.ruleutils.all_paths_from_root">all_paths_from_root</a></code></li>
 <li><code><a title="odinson.ruleutils.parse_odinson_query" href="#odinson.ruleutils.parse_odinson_query">parse_odinson_query</a></code></li>
 <li><code><a title="odinson.ruleutils.path_from_root" href="#odinson.ruleutils.path_from_root">path_from_root</a></code></li>
 <li><code><a title="odinson.ruleutils.random_hybrid" href="#odinson.ruleutils.random_hybrid">random_hybrid</a></code></li>
