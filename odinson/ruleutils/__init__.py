@@ -8,6 +8,7 @@ try:
     __all__ = [
         "parse_odinson_query",
         "path_from_root",
+        "all_paths_from_root",
         "random_surface",
         "random_traversal",
         "random_hybrid",
