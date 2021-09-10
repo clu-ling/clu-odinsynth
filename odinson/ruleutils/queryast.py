@@ -51,10 +51,13 @@ class AstNode:
         return f"<{self.__class__.__name__}: {self}>"
 
     def __eq__(self, value):
-        return isinstance(value, type(self))
+        return self.id_tuple() == value.id_tuple()
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(self.id_tuple())
+
+    def id_tuple(self):
+        return (type(self),)
 
     def is_hole(self) -> bool:
         """Returns true if the node is a hole."""
@@ -246,11 +249,8 @@ class ExactMatcher(Matcher):
         else:
             return json.dumps(self.string)
 
-    def __eq__(self, value):
-        return isinstance(value, ExactMatcher) and self.string == value.string
-
-    def __hash__(self):
-        return hash(self.string)
+    def id_tuple(self):
+        return super().id_tuple() + (self.string,)
 
 
 ####################
@@ -289,15 +289,8 @@ class FieldConstraint(Constraint):
     def __str__(self):
         return f"{self.name}={self.value}"
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, FieldConstraint)
-            and self.name == value.name
-            and self.value == value.value
-        )
-
-    def __hash__(self):
-        return hash((type(self), self.name, self.value))
+    def id_tuple(self):
+        return super().id_tuple() + (self.name, self.value)
 
     def has_holes(self):
         return self.name.has_holes() or self.value.has_holes()
@@ -339,11 +332,8 @@ class NotConstraint(Constraint):
         c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
         return f"!{c}"
 
-    def __eq__(self, value):
-        return isinstance(value, NotConstraint) and self.constraint == value.constraint
-
-    def __hash__(self):
-        return hash((type(self), self.constraint))
+    def id_tuple(self):
+        return super().id_tuple() + (self.constraint,)
 
     def has_holes(self):
         return self.constraint.has_holes()
@@ -380,15 +370,8 @@ class AndConstraint(Constraint):
     def __str__(self):
         return f"{self.lhs} & {self.rhs}"
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, AndConstraint)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
-
-    def __hash__(self):
-        return hash((type(self), self.lhs, self.rhs))
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -435,15 +418,8 @@ class OrConstraint(Constraint):
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, OrConstraint)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
-
-    def __hash__(self):
-        return hash((type(self), self.lhs, self.rhs))
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -531,11 +507,8 @@ class TokenSurface(Surface):
     def __str__(self):
         return f"[{self.constraint}]"
 
-    def __eq__(self, value):
-        return isinstance(value, TokenSurface) and self.constraint == value.constraint
-
-    def __hash__(self):
-        return hash((type(self), self.constraint))
+    def id_tuple(self):
+        return super().id_tuple() + (self.constraint,)
 
     def has_holes(self):
         return self.constraint.has_holes()
@@ -570,15 +543,8 @@ class ConcatSurface(Surface):
         rhs = maybe_parens(self.rhs, OrSurface)
         return f"{lhs} {rhs}"
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, ConcatSurface)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
-
-    def __hash__(self):
-        return hash((type(self), self.lhs, self.rhs))
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -627,15 +593,8 @@ class OrSurface(Surface):
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, OrSurface)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
-
-    def __hash__(self):
-        return hash((type(self), self.lhs, self.rhs))
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -684,16 +643,8 @@ class RepeatSurface(Surface):
         quant = make_quantifier(self.min, self.max)
         return f"{surf}{quant}"
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, RepeatSurface)
-            and self.surf == value.surf
-            and self.min == value.min
-            and self.max == value.max
-        )
-
-    def __hash__(self):
-        return hash((type(self), self.surf, self.min, self.max))
+    def id_tuple(self):
+        return super().id_tuple() + (self.surf, self.min, self.max)
 
     def has_holes(self):
         return self.surf.has_holes()
@@ -791,11 +742,8 @@ class IncomingLabelTraversal(Traversal):
     def __str__(self):
         return f"<{self.label}"
 
-    def __eq__(self, value):
-        return isinstance(value, IncomingLabelTraversal) and self.label == value.label
-
-    def __hash__(self):
-        return hash((type(self), self.label))
+    def id_tuple(self):
+        return super().id_tuple() + (self.label,)
 
     def has_holes(self):
         return self.label.has_holes()
@@ -829,11 +777,8 @@ class OutgoingLabelTraversal(Traversal):
     def __str__(self):
         return f">{self.label}"
 
-    def __eq__(self, value):
-        return isinstance(value, OutgoingLabelTraversal) and self.label == value.label
-
-    def __hash__(self):
-        return hash((type(self), self.label))
+    def id_tuple(self):
+        return super().id_tuple() + (self.label,)
 
     def has_holes(self):
         return self.label.has_holes()
@@ -870,15 +815,8 @@ class ConcatTraversal(Traversal):
         rhs = maybe_parens(self.rhs, OrTraversal)
         return f"{lhs} {rhs}"
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, ConcatTraversal)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
-
-    def __hash__(self):
-        return hash((type(self), self.lhs, self.rhs))
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -924,15 +862,8 @@ class OrTraversal(Traversal):
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, OrTraversal)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
-
-    def __hash__(self):
-        return hash((type(self), self.lhs, self.rhs))
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -978,16 +909,8 @@ class RepeatTraversal(Traversal):
         quant = make_quantifier(self.min, self.max)
         return f"{traversal}{quant}"
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, RepeatTraversal)
-            and self.traversal == value.traversal
-            and self.min == value.min
-            and self.max == value.max
-        )
-
-    def __hash__(self):
-        return hash((type(self), self.traversal, self.min, self.max))
+    def id_tuple(self):
+        return super().id_tuple() + (self.traversal, self.min, self.max)
 
     def has_holes(self):
         return self.traversal.has_holes()
@@ -1057,16 +980,8 @@ class HybridQuery(Query):
         traversal = maybe_parens(self.traversal, OrTraversal)
         return f"{src} {traversal} {dst}"
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, HybridQuery)
-            and self.src == value.src
-            and self.dst == value.dst
-            and self.traversal == value.traversal
-        )
-
-    def __hash__(self):
-        return hash((type(self), self.src, self.traversal, self.dst))
+    def id_tuple(self):
+        return super().id_tuple() + (self.src, self.traversal, self.dst)
 
     def has_holes(self):
         return (
