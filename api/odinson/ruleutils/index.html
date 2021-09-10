@@ -113,8 +113,8 @@ except Exception as e:
     trans = defaultdict(set)
     for path in paths:
         for i in range(len(path) - 1):
-            trans[path[i]].add(path[i+1])
-    return {k:list(v) for k,v in trans.items()}</code></pre>
+            trans[path[i]].add(path[i + 1])
+    return {k: list(v) for k, v in trans.items()}</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.parse_odinson_query"><code class="name flex">

@@ -227,8 +227,13 @@ def parse_odinson_query(pattern: Text) -&gt; AstNode:
     return top.parseString(pattern)[0]
 
 
-def parse_traversal(pattern: Text) -&gt; AstNode:
-    &#34;&#34;&#34;Gets a string and returns the corresponding AST.&#34;&#34;&#34;
+def parse_surface(pattern: Text) -&gt; Surface:
+    &#34;&#34;&#34;Gets a string and returns the corresponding surface pattern.&#34;&#34;&#34;
+    or_surface.parseString(pattern)[0]
+
+
+def parse_traversal(pattern: Text) -&gt; Traversal:
+    &#34;&#34;&#34;Gets a string and returns the corresponding graph traversal.&#34;&#34;&#34;
     return or_traversal.parseString(pattern)[0]</code></pre>
 </details>
 </section>
@@ -253,17 +258,31 @@ def parse_traversal(pattern: Text) -&gt; AstNode:
     return top.parseString(pattern)[0]</code></pre>
 </details>
 </dd>
-<dt id="odinson.ruleutils.queryparser.parse_traversal"><code class="name flex">
-<span>def <span class="ident">parse_traversal</span></span>(<span>pattern: str) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
+<dt id="odinson.ruleutils.queryparser.parse_surface"><code class="name flex">
+<span>def <span class="ident">parse_surface</span></span>(<span>pattern: str) ‑> <a title="odinson.ruleutils.queryast.Surface" href="queryast.html#odinson.ruleutils.queryast.Surface">Surface</a></span>
 </code></dt>
 <dd>
-<div class="desc"><p>Gets a string and returns the corresponding AST.</p></div>
+<div class="desc"><p>Gets a string and returns the corresponding surface pattern.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def parse_traversal(pattern: Text) -&gt; AstNode:
-    &#34;&#34;&#34;Gets a string and returns the corresponding AST.&#34;&#34;&#34;
+<pre><code class="python">def parse_surface(pattern: Text) -&gt; Surface:
+    &#34;&#34;&#34;Gets a string and returns the corresponding surface pattern.&#34;&#34;&#34;
+    or_surface.parseString(pattern)[0]</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryparser.parse_traversal"><code class="name flex">
+<span>def <span class="ident">parse_traversal</span></span>(<span>pattern: str) ‑> <a title="odinson.ruleutils.queryast.Traversal" href="queryast.html#odinson.ruleutils.queryast.Traversal">Traversal</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Gets a string and returns the corresponding graph traversal.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def parse_traversal(pattern: Text) -&gt; Traversal:
+    &#34;&#34;&#34;Gets a string and returns the corresponding graph traversal.&#34;&#34;&#34;
     return or_traversal.parseString(pattern)[0]</code></pre>
 </details>
 </dd>
@@ -286,6 +305,7 @@ def parse_traversal(pattern: Text) -&gt; AstNode:
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="odinson.ruleutils.queryparser.parse_odinson_query" href="#odinson.ruleutils.queryparser.parse_odinson_query">parse_odinson_query</a></code></li>
+<li><code><a title="odinson.ruleutils.queryparser.parse_surface" href="#odinson.ruleutils.queryparser.parse_surface">parse_surface</a></code></li>
 <li><code><a title="odinson.ruleutils.queryparser.parse_traversal" href="#odinson.ruleutils.queryparser.parse_traversal">parse_traversal</a></code></li>
 </ul>
 </li>

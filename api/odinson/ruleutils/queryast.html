@@ -253,7 +253,7 @@ def get_all_trees(node: AstNode) -&gt; List[AstNode]:
 
 
 class Matcher(AstNode):
-    pass
+    &#34;&#34;&#34;The base class for all string matchers.&#34;&#34;&#34;
 
 
 class HoleMatcher(Matcher):
@@ -288,7 +288,7 @@ class ExactMatcher(Matcher):
 
 
 class Constraint(AstNode):
-    pass
+    &#34;&#34;&#34;The base class for all token constraints.&#34;&#34;&#34;
 
 
 class HoleConstraint(Constraint):
@@ -489,7 +489,7 @@ class OrConstraint(Constraint):
 
 
 class Surface(AstNode):
-    pass
+    &#34;&#34;&#34;The base class for all surface patterns.&#34;&#34;&#34;
 
 
 class HoleSurface(Surface):
@@ -712,7 +712,7 @@ class RepeatSurface(Surface):
 
 
 class Traversal(AstNode):
-    pass
+    &#34;&#34;&#34;The base class for all graph traversals.&#34;&#34;&#34;
 
 
 class HoleTraversal(Traversal):
@@ -977,7 +977,7 @@ class RepeatTraversal(Traversal):
 
 
 class Query(AstNode):
-    pass
+    &#34;&#34;&#34;The base class for hybrid queries.&#34;&#34;&#34;
 
 
 class HoleQuery(Query):
@@ -1102,7 +1102,7 @@ class HybridQuery(Query):
 <span>(</span><span>lhs: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>, rhs: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all token constraints.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -1525,7 +1525,7 @@ returns an empty list.</p></div>
 <span>(</span><span>lhs: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>, rhs: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all surface patterns.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -1628,7 +1628,7 @@ returns an empty list.</p></div>
 <span>(</span><span>lhs: <a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a>, rhs: <a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all graph traversals.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -1727,13 +1727,13 @@ returns an empty list.</p></div>
 <span>class <span class="ident">Constraint</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all token constraints.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class Constraint(AstNode):
-    pass</code></pre>
+    &#34;&#34;&#34;The base class for all token constraints.&#34;&#34;&#34;</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -1773,7 +1773,7 @@ returns an empty list.</p></div>
 <span>(</span><span>s: Text)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all string matchers.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -1839,7 +1839,7 @@ returns an empty list.</p></div>
 <span>(</span><span>name: <a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a>, value: <a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all token constraints.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -1932,7 +1932,7 @@ returns an empty list.</p></div>
 <span>class <span class="ident">HoleConstraint</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all token constraints.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -1985,7 +1985,7 @@ returns an empty list.</p></div>
 <span>class <span class="ident">HoleMatcher</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all string matchers.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2030,7 +2030,7 @@ returns an empty list.</p></div>
 <span>class <span class="ident">HoleQuery</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for hybrid queries.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2081,7 +2081,7 @@ returns an empty list.</p></div>
 <span>class <span class="ident">HoleSurface</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all surface patterns.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2144,7 +2144,7 @@ returns an empty list.</p></div>
 <span>class <span class="ident">HoleTraversal</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all graph traversals.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2212,7 +2212,7 @@ returns an empty list.</p></div>
 <span>(</span><span>src: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>, traversal: <a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a>, dst: <a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for hybrid queries.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2354,7 +2354,7 @@ returns an empty list.</p></div>
 <span>(</span><span>label: <a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all graph traversals.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2439,7 +2439,7 @@ returns an empty list.</p></div>
 <span>class <span class="ident">IncomingWildcardTraversal</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all graph traversals.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2481,13 +2481,13 @@ returns an empty list.</p></div>
 <span>class <span class="ident">Matcher</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all string matchers.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class Matcher(AstNode):
-    pass</code></pre>
+    &#34;&#34;&#34;The base class for all string matchers.&#34;&#34;&#34;</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2524,7 +2524,7 @@ returns an empty list.</p></div>
 <span>(</span><span>c: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all token constraints.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2613,7 +2613,7 @@ returns an empty list.</p></div>
 <span>(</span><span>lhs: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>, rhs: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all token constraints.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2708,7 +2708,7 @@ returns an empty list.</p></div>
 <span>(</span><span>lhs: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>, rhs: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all surface patterns.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2806,7 +2806,7 @@ returns an empty list.</p></div>
 <span>(</span><span>lhs: <a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a>, rhs: <a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all graph traversals.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2901,7 +2901,7 @@ returns an empty list.</p></div>
 <span>(</span><span>label: <a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all graph traversals.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2986,7 +2986,7 @@ returns an empty list.</p></div>
 <span>class <span class="ident">OutgoingWildcardTraversal</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all graph traversals.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -3028,13 +3028,13 @@ returns an empty list.</p></div>
 <span>class <span class="ident">Query</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for hybrid queries.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class Query(AstNode):
-    pass</code></pre>
+    &#34;&#34;&#34;The base class for hybrid queries.&#34;&#34;&#34;</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -3071,7 +3071,7 @@ returns an empty list.</p></div>
 <span>(</span><span>surf: <a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a>, min: int, max: Optional[int])</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all surface patterns.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -3167,7 +3167,7 @@ returns an empty list.</p></div>
 <span>(</span><span>traversal: <a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a>, min: int, max: Optional[int])</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all graph traversals.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -3261,13 +3261,13 @@ returns an empty list.</p></div>
 <span>class <span class="ident">Surface</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all surface patterns.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class Surface(AstNode):
-    pass</code></pre>
+    &#34;&#34;&#34;The base class for all surface patterns.&#34;&#34;&#34;</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -3308,7 +3308,7 @@ returns an empty list.</p></div>
 <span>(</span><span>c: <a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all surface patterns.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -3391,13 +3391,13 @@ returns an empty list.</p></div>
 <span>class <span class="ident">Traversal</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all graph traversals.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class Traversal(AstNode):
-    pass</code></pre>
+    &#34;&#34;&#34;The base class for all graph traversals.&#34;&#34;&#34;</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -3439,7 +3439,7 @@ returns an empty list.</p></div>
 <span>class <span class="ident">WildcardSurface</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>The base class for all AST nodes.</p></div>
+<div class="desc"><p>The base class for all surface patterns.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
