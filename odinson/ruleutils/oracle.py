@@ -9,6 +9,15 @@ from odinson.ruleutils import config
 Vocabularies = Dict[Text, List[Text]]
 
 
+def make_transition_table(paths):
+    """Gets a list of paths and returns a transition table."""
+    trans = defaultdict(set)
+    for path in paths:
+        for i in range(len(path) - 1):
+            trans[path[i]].add(path[i+1])
+    return {k:list(v) for k,v in trans.items()}
+
+
 def all_paths_from_root(
     target: AstNode, vocabularies: Optional[Vocabularies] = None
 ) -> List[List[AstNode]]:

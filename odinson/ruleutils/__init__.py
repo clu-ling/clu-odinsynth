@@ -9,6 +9,7 @@ try:
         "parse_odinson_query",
         "path_from_root",
         "all_paths_from_root",
+        "make_transition_table",
         "random_surface",
         "random_traversal",
         "random_hybrid",
