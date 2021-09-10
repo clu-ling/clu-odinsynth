@@ -53,6 +53,9 @@ class AstNode:
     def __eq__(self, value):
         return isinstance(value, type(self))
 
+    def __hash__(self):
+        return hash(type(self))
+
     def is_hole(self) -> bool:
         """Returns true if the node is a hole."""
         # most nodes are not holes,
@@ -246,6 +249,9 @@ class ExactMatcher(Matcher):
     def __eq__(self, value):
         return isinstance(value, ExactMatcher) and self.string == value.string
 
+    def __hash__(self):
+        return hash(self.string)
+
 
 ####################
 # token constraints
@@ -290,6 +296,9 @@ class FieldConstraint(Constraint):
             and self.value == value.value
         )
 
+    def __hash__(self):
+        return hash((type(self), self.name, self.value))
+
     def has_holes(self):
         return self.name.has_holes() or self.value.has_holes()
 
@@ -333,6 +342,9 @@ class NotConstraint(Constraint):
     def __eq__(self, value):
         return isinstance(value, NotConstraint) and self.constraint == value.constraint
 
+    def __hash__(self):
+        return hash((type(self), self.constraint))
+
     def has_holes(self):
         return self.constraint.has_holes()
 
@@ -374,6 +386,9 @@ class AndConstraint(Constraint):
             and self.lhs == value.lhs
             and self.rhs == value.rhs
         )
+
+    def __hash__(self):
+        return hash((type(self), self.lhs, self.rhs))
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -426,6 +441,9 @@ class OrConstraint(Constraint):
             and self.lhs == value.lhs
             and self.rhs == value.rhs
         )
+
+    def __hash__(self):
+        return hash((type(self), self.lhs, self.rhs))
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -516,6 +534,9 @@ class TokenSurface(Surface):
     def __eq__(self, value):
         return isinstance(value, TokenSurface) and self.constraint == value.constraint
 
+    def __hash__(self):
+        return hash((type(self), self.constraint))
+
     def has_holes(self):
         return self.constraint.has_holes()
 
@@ -555,6 +576,9 @@ class ConcatSurface(Surface):
             and self.lhs == value.lhs
             and self.rhs == value.rhs
         )
+
+    def __hash__(self):
+        return hash((type(self), self.lhs, self.rhs))
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -610,6 +634,9 @@ class OrSurface(Surface):
             and self.rhs == value.rhs
         )
 
+    def __hash__(self):
+        return hash((type(self), self.lhs, self.rhs))
+
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
 
@@ -664,6 +691,9 @@ class RepeatSurface(Surface):
             and self.min == value.min
             and self.max == value.max
         )
+
+    def __hash__(self):
+        return hash((type(self), self.surf, self.min, self.max))
 
     def has_holes(self):
         return self.surf.has_holes()
@@ -764,6 +794,9 @@ class IncomingLabelTraversal(Traversal):
     def __eq__(self, value):
         return isinstance(value, IncomingLabelTraversal) and self.label == value.label
 
+    def __hash__(self):
+        return hash((type(self), self.label))
+
     def has_holes(self):
         return self.label.has_holes()
 
@@ -798,6 +831,9 @@ class OutgoingLabelTraversal(Traversal):
 
     def __eq__(self, value):
         return isinstance(value, OutgoingLabelTraversal) and self.label == value.label
+
+    def __hash__(self):
+        return hash((type(self), self.label))
 
     def has_holes(self):
         return self.label.has_holes()
@@ -840,6 +876,9 @@ class ConcatTraversal(Traversal):
             and self.lhs == value.lhs
             and self.rhs == value.rhs
         )
+
+    def __hash__(self):
+        return hash((type(self), self.lhs, self.rhs))
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -892,6 +931,9 @@ class OrTraversal(Traversal):
             and self.rhs == value.rhs
         )
 
+    def __hash__(self):
+        return hash((type(self), self.lhs, self.rhs))
+
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
 
@@ -943,6 +985,9 @@ class RepeatTraversal(Traversal):
             and self.min == value.min
             and self.max == value.max
         )
+
+    def __hash__(self):
+        return hash((type(self), self.traversal, self.min, self.max))
 
     def has_holes(self):
         return self.traversal.has_holes()
@@ -1019,6 +1064,9 @@ class HybridQuery(Query):
             and self.dst == value.dst
             and self.traversal == value.traversal
         )
+
+    def __hash__(self):
+        return hash((type(self), self.src, self.traversal, self.dst))
 
     def has_holes(self):
         return (
