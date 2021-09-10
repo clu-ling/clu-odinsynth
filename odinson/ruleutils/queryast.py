@@ -224,7 +224,7 @@ def get_all_trees(node: AstNode) -> List[AstNode]:
 
 
 class Matcher(AstNode):
-    pass
+    """The base class for all string matchers."""
 
 
 class HoleMatcher(Matcher):
@@ -259,7 +259,7 @@ class ExactMatcher(Matcher):
 
 
 class Constraint(AstNode):
-    pass
+    """The base class for all token constraints."""
 
 
 class HoleConstraint(Constraint):
@@ -460,7 +460,7 @@ class OrConstraint(Constraint):
 
 
 class Surface(AstNode):
-    pass
+    """The base class for all surface patterns."""
 
 
 class HoleSurface(Surface):
@@ -683,7 +683,7 @@ class RepeatSurface(Surface):
 
 
 class Traversal(AstNode):
-    pass
+    """The base class for all graph traversals."""
 
 
 class HoleTraversal(Traversal):
@@ -948,7 +948,7 @@ class RepeatTraversal(Traversal):
 
 
 class Query(AstNode):
-    pass
+    """The base class for hybrid queries."""
 
 
 class HoleQuery(Query):
