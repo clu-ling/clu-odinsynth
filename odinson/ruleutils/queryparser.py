@@ -198,6 +198,11 @@ def parse_odinson_query(pattern: Text) -> AstNode:
     return top.parseString(pattern)[0]
 
 
-def parse_traversal(pattern: Text) -> AstNode:
-    """Gets a string and returns the corresponding AST."""
+def parse_surface(pattern: Text) -> Surface:
+    """Gets a string and returns the corresponding surface pattern."""
+    or_surface.parseString(pattern)[0]
+
+
+def parse_traversal(pattern: Text) -> Traversal:
+    """Gets a string and returns the corresponding graph traversal."""
     return or_traversal.parseString(pattern)[0]
