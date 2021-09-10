@@ -38,6 +38,7 @@
         &#34;parse_odinson_query&#34;,
         &#34;path_from_root&#34;,
         &#34;all_paths_from_root&#34;,
+        &#34;make_transition_table&#34;,
         &#34;random_surface&#34;,
         &#34;random_traversal&#34;,
         &#34;random_hybrid&#34;,
@@ -96,6 +97,24 @@ except Exception as e:
     for p in target.permutations():
         results.append(path_from_root(p, vocabularies))
     return results</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.make_transition_table"><code class="name flex">
+<span>def <span class="ident">make_transition_table</span></span>(<span>paths)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Gets a list of paths and returns a transition table.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def make_transition_table(paths):
+    &#34;&#34;&#34;Gets a list of paths and returns a transition table.&#34;&#34;&#34;
+    trans = defaultdict(set)
+    for path in paths:
+        for i in range(len(path) - 1):
+            trans[path[i]].add(path[i+1])
+    return {k:list(v) for k,v in trans.items()}</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.parse_odinson_query"><code class="name flex">
@@ -258,8 +277,9 @@ to the specified AstNode.</p></div>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="two-column">
+<ul class="">
 <li><code><a title="odinson.ruleutils.all_paths_from_root" href="#odinson.ruleutils.all_paths_from_root">all_paths_from_root</a></code></li>
+<li><code><a title="odinson.ruleutils.make_transition_table" href="#odinson.ruleutils.make_transition_table">make_transition_table</a></code></li>
 <li><code><a title="odinson.ruleutils.parse_odinson_query" href="#odinson.ruleutils.parse_odinson_query">parse_odinson_query</a></code></li>
 <li><code><a title="odinson.ruleutils.path_from_root" href="#odinson.ruleutils.path_from_root">path_from_root</a></code></li>
 <li><code><a title="odinson.ruleutils.random_hybrid" href="#odinson.ruleutils.random_hybrid">random_hybrid</a></code></li>

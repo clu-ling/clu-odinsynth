@@ -38,6 +38,15 @@ from odinson.ruleutils import config
 Vocabularies = Dict[Text, List[Text]]
 
 
+def make_transition_table(paths):
+    &#34;&#34;&#34;Gets a list of paths and returns a transition table.&#34;&#34;&#34;
+    trans = defaultdict(set)
+    for path in paths:
+        for i in range(len(path) - 1):
+            trans[path[i]].add(path[i+1])
+    return {k:list(v) for k,v in trans.items()}
+
+
 def all_paths_from_root(
     target: AstNode, vocabularies: Optional[Vocabularies] = None
 ) -&gt; List[List[AstNode]]:
@@ -310,6 +319,24 @@ because the nodes may contain holes.</p></div>
             label = n.label.string
             vocabularies[config.SYNTAX_FIELD].add(label)
     return {k: list(v) for k, v in vocabularies.items()}</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.oracle.make_transition_table"><code class="name flex">
+<span>def <span class="ident">make_transition_table</span></span>(<span>paths)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Gets a list of paths and returns a transition table.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def make_transition_table(paths):
+    &#34;&#34;&#34;Gets a list of paths and returns a transition table.&#34;&#34;&#34;
+    trans = defaultdict(set)
+    for path in paths:
+        for i in range(len(path) - 1):
+            trans[path[i]].add(path[i+1])
+    return {k:list(v) for k,v in trans.items()}</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.oracle.path_from_root"><code class="name flex">
@@ -612,6 +639,7 @@ to the specified AstNode.</p></div>
 <li><code><a title="odinson.ruleutils.oracle.all_paths_from_root" href="#odinson.ruleutils.oracle.all_paths_from_root">all_paths_from_root</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.are_compatible" href="#odinson.ruleutils.oracle.are_compatible">are_compatible</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.make_minimal_vocabularies" href="#odinson.ruleutils.oracle.make_minimal_vocabularies">make_minimal_vocabularies</a></code></li>
+<li><code><a title="odinson.ruleutils.oracle.make_transition_table" href="#odinson.ruleutils.oracle.make_transition_table">make_transition_table</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.path_from_root" href="#odinson.ruleutils.oracle.path_from_root">path_from_root</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.random_hybrid" href="#odinson.ruleutils.oracle.random_hybrid">random_hybrid</a></code></li>
 <li><code><a title="odinson.ruleutils.oracle.random_query" href="#odinson.ruleutils.oracle.random_query">random_query</a></code></li>

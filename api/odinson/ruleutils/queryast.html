@@ -80,7 +80,13 @@ class AstNode:
         return f&#34;&lt;{self.__class__.__name__}: {self}&gt;&#34;
 
     def __eq__(self, value):
-        return isinstance(value, type(self))
+        return self.id_tuple() == value.id_tuple()
+
+    def __hash__(self):
+        return hash(self.id_tuple())
+
+    def id_tuple(self):
+        return (type(self),)
 
     def is_hole(self) -&gt; bool:
         &#34;&#34;&#34;Returns true if the node is a hole.&#34;&#34;&#34;
@@ -272,8 +278,8 @@ class ExactMatcher(Matcher):
         else:
             return json.dumps(self.string)
 
-    def __eq__(self, value):
-        return isinstance(value, ExactMatcher) and self.string == value.string
+    def id_tuple(self):
+        return super().id_tuple() + (self.string,)
 
 
 ####################
@@ -312,12 +318,8 @@ class FieldConstraint(Constraint):
     def __str__(self):
         return f&#34;{self.name}={self.value}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, FieldConstraint)
-            and self.name == value.name
-            and self.value == value.value
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.name, self.value)
 
     def has_holes(self):
         return self.name.has_holes() or self.value.has_holes()
@@ -359,8 +361,8 @@ class NotConstraint(Constraint):
         c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
         return f&#34;!{c}&#34;
 
-    def __eq__(self, value):
-        return isinstance(value, NotConstraint) and self.constraint == value.constraint
+    def id_tuple(self):
+        return super().id_tuple() + (self.constraint,)
 
     def has_holes(self):
         return self.constraint.has_holes()
@@ -397,12 +399,8 @@ class AndConstraint(Constraint):
     def __str__(self):
         return f&#34;{self.lhs} &amp; {self.rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, AndConstraint)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -449,12 +447,8 @@ class OrConstraint(Constraint):
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, OrConstraint)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -542,8 +536,8 @@ class TokenSurface(Surface):
     def __str__(self):
         return f&#34;[{self.constraint}]&#34;
 
-    def __eq__(self, value):
-        return isinstance(value, TokenSurface) and self.constraint == value.constraint
+    def id_tuple(self):
+        return super().id_tuple() + (self.constraint,)
 
     def has_holes(self):
         return self.constraint.has_holes()
@@ -578,12 +572,8 @@ class ConcatSurface(Surface):
         rhs = maybe_parens(self.rhs, OrSurface)
         return f&#34;{lhs} {rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, ConcatSurface)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -632,12 +622,8 @@ class OrSurface(Surface):
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, OrSurface)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -686,13 +672,8 @@ class RepeatSurface(Surface):
         quant = make_quantifier(self.min, self.max)
         return f&#34;{surf}{quant}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, RepeatSurface)
-            and self.surf == value.surf
-            and self.min == value.min
-            and self.max == value.max
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.surf, self.min, self.max)
 
     def has_holes(self):
         return self.surf.has_holes()
@@ -790,8 +771,8 @@ class IncomingLabelTraversal(Traversal):
     def __str__(self):
         return f&#34;&lt;{self.label}&#34;
 
-    def __eq__(self, value):
-        return isinstance(value, IncomingLabelTraversal) and self.label == value.label
+    def id_tuple(self):
+        return super().id_tuple() + (self.label,)
 
     def has_holes(self):
         return self.label.has_holes()
@@ -825,8 +806,8 @@ class OutgoingLabelTraversal(Traversal):
     def __str__(self):
         return f&#34;&gt;{self.label}&#34;
 
-    def __eq__(self, value):
-        return isinstance(value, OutgoingLabelTraversal) and self.label == value.label
+    def id_tuple(self):
+        return super().id_tuple() + (self.label,)
 
     def has_holes(self):
         return self.label.has_holes()
@@ -863,12 +844,8 @@ class ConcatTraversal(Traversal):
         rhs = maybe_parens(self.rhs, OrTraversal)
         return f&#34;{lhs} {rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, ConcatTraversal)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -914,12 +891,8 @@ class OrTraversal(Traversal):
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, OrTraversal)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -965,13 +938,8 @@ class RepeatTraversal(Traversal):
         quant = make_quantifier(self.min, self.max)
         return f&#34;{traversal}{quant}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, RepeatTraversal)
-            and self.traversal == value.traversal
-            and self.min == value.min
-            and self.max == value.max
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.traversal, self.min, self.max)
 
     def has_holes(self):
         return self.traversal.has_holes()
@@ -1041,13 +1009,8 @@ class HybridQuery(Query):
         traversal = maybe_parens(self.traversal, OrTraversal)
         return f&#34;{src} {traversal} {dst}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, HybridQuery)
-            and self.src == value.src
-            and self.dst == value.dst
-            and self.traversal == value.traversal
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.src, self.traversal, self.dst)
 
     def has_holes(self):
         return (
@@ -1152,12 +1115,8 @@ class HybridQuery(Query):
     def __str__(self):
         return f&#34;{self.lhs} &amp; {self.rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, AndConstraint)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -1200,6 +1159,22 @@ class HybridQuery(Query):
 <li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.AndConstraint.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></b></code>:
@@ -1237,7 +1212,13 @@ class HybridQuery(Query):
         return f&#34;&lt;{self.__class__.__name__}: {self}&gt;&#34;
 
     def __eq__(self, value):
-        return isinstance(value, type(self))
+        return self.id_tuple() == value.id_tuple()
+
+    def __hash__(self):
+        return hash(self.id_tuple())
+
+    def id_tuple(self):
+        return (type(self),)
 
     def is_hole(self) -&gt; bool:
         &#34;&#34;&#34;Returns true if the node is a hole.&#34;&#34;&#34;
@@ -1358,6 +1339,19 @@ returns an empty list.</p></div>
     # most nodes need to override this to handle their children,
     # so the default implementation is intended for Hole* nodes
     return self.is_hole()</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return (type(self),)</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.is_hole"><code class="name flex">
@@ -1546,12 +1540,8 @@ returns an empty list.</p></div>
         rhs = maybe_parens(self.rhs, OrSurface)
         return f&#34;{lhs} {rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, ConcatSurface)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -1596,6 +1586,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.ConcatSurface.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
@@ -1637,12 +1643,8 @@ returns an empty list.</p></div>
         rhs = maybe_parens(self.rhs, OrTraversal)
         return f&#34;{lhs} {rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, ConcatTraversal)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -1684,6 +1686,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.ConcatTraversal.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></b></code>:
@@ -1771,14 +1789,30 @@ returns an empty list.</p></div>
         else:
             return json.dumps(self.string)
 
-    def __eq__(self, value):
-        return isinstance(value, ExactMatcher) and self.string == value.string</code></pre>
+    def id_tuple(self):
+        return super().id_tuple() + (self.string,)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.ExactMatcher.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.string,)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a></b></code>:
@@ -1818,12 +1852,8 @@ returns an empty list.</p></div>
     def __str__(self):
         return f&#34;{self.name}={self.value}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, FieldConstraint)
-            and self.name == value.name
-            and self.value == value.value
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.name, self.value)
 
     def has_holes(self):
         return self.name.has_holes() or self.value.has_holes()
@@ -1861,6 +1891,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.FieldConstraint.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.name, self.value)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></b></code>:
@@ -2183,13 +2229,8 @@ returns an empty list.</p></div>
         traversal = maybe_parens(self.traversal, OrTraversal)
         return f&#34;{src} {traversal} {dst}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, HybridQuery)
-            and self.src == value.src
-            and self.dst == value.dst
-            and self.traversal == value.traversal
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.src, self.traversal, self.dst)
 
     def has_holes(self):
         return (
@@ -2271,6 +2312,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Query" href="#odinson.ruleutils.queryast.Query">Query</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.HybridQuery.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.src, self.traversal, self.dst)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Query" href="#odinson.ruleutils.queryast.Query">Query</a></b></code>:
@@ -2309,8 +2366,8 @@ returns an empty list.</p></div>
     def __str__(self):
         return f&#34;&lt;{self.label}&#34;
 
-    def __eq__(self, value):
-        return isinstance(value, IncomingLabelTraversal) and self.label == value.label
+    def id_tuple(self):
+        return super().id_tuple() + (self.label,)
 
     def has_holes(self):
         return self.label.has_holes()
@@ -2341,6 +2398,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.IncomingLabelTraversal.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.label,)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></b></code>:
@@ -2464,8 +2537,8 @@ returns an empty list.</p></div>
         c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
         return f&#34;!{c}&#34;
 
-    def __eq__(self, value):
-        return isinstance(value, NotConstraint) and self.constraint == value.constraint
+    def id_tuple(self):
+        return super().id_tuple() + (self.constraint,)
 
     def has_holes(self):
         return self.constraint.has_holes()
@@ -2498,6 +2571,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.NotConstraint.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.constraint,)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></b></code>:
@@ -2537,12 +2626,8 @@ returns an empty list.</p></div>
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, OrConstraint)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -2581,6 +2666,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.OrConstraint.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></b></code>:
@@ -2620,12 +2721,8 @@ returns an empty list.</p></div>
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, OrSurface)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -2667,6 +2764,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.OrSurface.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
@@ -2706,12 +2819,8 @@ returns an empty list.</p></div>
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, OrTraversal)
-            and self.lhs == value.lhs
-            and self.rhs == value.rhs
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.lhs, self.rhs)
 
     def has_holes(self):
         return self.lhs.has_holes() or self.rhs.has_holes()
@@ -2750,6 +2859,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.OrTraversal.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></b></code>:
@@ -2788,8 +2913,8 @@ returns an empty list.</p></div>
     def __str__(self):
         return f&#34;&gt;{self.label}&#34;
 
-    def __eq__(self, value):
-        return isinstance(value, OutgoingLabelTraversal) and self.label == value.label
+    def id_tuple(self):
+        return super().id_tuple() + (self.label,)
 
     def has_holes(self):
         return self.label.has_holes()
@@ -2820,6 +2945,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.OutgoingLabelTraversal.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.label,)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></b></code>:
@@ -2946,13 +3087,8 @@ returns an empty list.</p></div>
         quant = make_quantifier(self.min, self.max)
         return f&#34;{surf}{quant}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, RepeatSurface)
-            and self.surf == value.surf
-            and self.min == value.min
-            and self.max == value.max
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.surf, self.min, self.max)
 
     def has_holes(self):
         return self.surf.has_holes()
@@ -2989,6 +3125,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.RepeatSurface.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.surf, self.min, self.max)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
@@ -3031,13 +3183,8 @@ returns an empty list.</p></div>
         quant = make_quantifier(self.min, self.max)
         return f&#34;{traversal}{quant}&#34;
 
-    def __eq__(self, value):
-        return (
-            isinstance(value, RepeatTraversal)
-            and self.traversal == value.traversal
-            and self.min == value.min
-            and self.max == value.max
-        )
+    def id_tuple(self):
+        return super().id_tuple() + (self.traversal, self.min, self.max)
 
     def has_holes(self):
         return self.traversal.has_holes()
@@ -3073,6 +3220,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.RepeatTraversal.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.traversal, self.min, self.max)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></b></code>:
@@ -3157,8 +3320,8 @@ returns an empty list.</p></div>
     def __str__(self):
         return f&#34;[{self.constraint}]&#34;
 
-    def __eq__(self, value):
-        return isinstance(value, TokenSurface) and self.constraint == value.constraint
+    def id_tuple(self):
+        return super().id_tuple() + (self.constraint,)
 
     def has_holes(self):
         return self.constraint.has_holes()
@@ -3187,6 +3350,22 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
 <li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.TokenSurface.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.constraint,)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
@@ -3316,12 +3495,16 @@ returns an empty list.</p></div>
 <ul>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.AndConstraint" href="#odinson.ruleutils.queryast.AndConstraint">AndConstraint</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.AndConstraint.id_tuple" href="#odinson.ruleutils.queryast.AndConstraint.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></code></h4>
 <ul class="">
 <li><code><a title="odinson.ruleutils.queryast.AstNode.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.id_tuple" href="#odinson.ruleutils.queryast.AstNode.id_tuple">id_tuple</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
@@ -3337,18 +3520,30 @@ returns an empty list.</p></div>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.ConcatSurface" href="#odinson.ruleutils.queryast.ConcatSurface">ConcatSurface</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.ConcatSurface.id_tuple" href="#odinson.ruleutils.queryast.ConcatSurface.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.ConcatTraversal" href="#odinson.ruleutils.queryast.ConcatTraversal">ConcatTraversal</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.ConcatTraversal.id_tuple" href="#odinson.ruleutils.queryast.ConcatTraversal.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></code></h4>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.ExactMatcher" href="#odinson.ruleutils.queryast.ExactMatcher">ExactMatcher</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.ExactMatcher.id_tuple" href="#odinson.ruleutils.queryast.ExactMatcher.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.FieldConstraint" href="#odinson.ruleutils.queryast.FieldConstraint">FieldConstraint</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.FieldConstraint.id_tuple" href="#odinson.ruleutils.queryast.FieldConstraint.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.HoleConstraint" href="#odinson.ruleutils.queryast.HoleConstraint">HoleConstraint</a></code></h4>
@@ -3367,9 +3562,15 @@ returns an empty list.</p></div>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.HybridQuery" href="#odinson.ruleutils.queryast.HybridQuery">HybridQuery</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.HybridQuery.id_tuple" href="#odinson.ruleutils.queryast.HybridQuery.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.IncomingLabelTraversal" href="#odinson.ruleutils.queryast.IncomingLabelTraversal">IncomingLabelTraversal</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.IncomingLabelTraversal.id_tuple" href="#odinson.ruleutils.queryast.IncomingLabelTraversal.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.IncomingWildcardTraversal" href="#odinson.ruleutils.queryast.IncomingWildcardTraversal">IncomingWildcardTraversal</a></code></h4>
@@ -3379,18 +3580,33 @@ returns an empty list.</p></div>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.NotConstraint" href="#odinson.ruleutils.queryast.NotConstraint">NotConstraint</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.NotConstraint.id_tuple" href="#odinson.ruleutils.queryast.NotConstraint.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.OrConstraint" href="#odinson.ruleutils.queryast.OrConstraint">OrConstraint</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.OrConstraint.id_tuple" href="#odinson.ruleutils.queryast.OrConstraint.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.OrSurface" href="#odinson.ruleutils.queryast.OrSurface">OrSurface</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.OrSurface.id_tuple" href="#odinson.ruleutils.queryast.OrSurface.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.OrTraversal" href="#odinson.ruleutils.queryast.OrTraversal">OrTraversal</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.OrTraversal.id_tuple" href="#odinson.ruleutils.queryast.OrTraversal.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.OutgoingLabelTraversal" href="#odinson.ruleutils.queryast.OutgoingLabelTraversal">OutgoingLabelTraversal</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.OutgoingLabelTraversal.id_tuple" href="#odinson.ruleutils.queryast.OutgoingLabelTraversal.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.OutgoingWildcardTraversal" href="#odinson.ruleutils.queryast.OutgoingWildcardTraversal">OutgoingWildcardTraversal</a></code></h4>
@@ -3400,15 +3616,24 @@ returns an empty list.</p></div>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.RepeatSurface" href="#odinson.ruleutils.queryast.RepeatSurface">RepeatSurface</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.RepeatSurface.id_tuple" href="#odinson.ruleutils.queryast.RepeatSurface.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.RepeatTraversal" href="#odinson.ruleutils.queryast.RepeatTraversal">RepeatTraversal</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.RepeatTraversal.id_tuple" href="#odinson.ruleutils.queryast.RepeatTraversal.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></code></h4>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.TokenSurface" href="#odinson.ruleutils.queryast.TokenSurface">TokenSurface</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.TokenSurface.id_tuple" href="#odinson.ruleutils.queryast.TokenSurface.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></code></h4>
