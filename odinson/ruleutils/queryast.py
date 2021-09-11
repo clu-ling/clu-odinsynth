@@ -48,7 +48,7 @@ class AstNode:
     """The base class for all AST nodes."""
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}: {self}>"
+        return f"<{self.__class__.__name__}: {str(self)!r}>"
 
     def __eq__(self, value):
         return self.id_tuple() == value.id_tuple()
@@ -129,6 +129,16 @@ class AstNode:
     def permutations(self) -> List[AstNode]:
         """Returns all trees that are equivalent to this AstNode."""
         return [self]
+
+    def over_approximation(self) -> AstNode:
+        """Returns a rule with a language that contains all the languages
+        of the current node's descendents."""
+        return self
+
+    def under_approximation(self) -> Optional[AstNode]:
+        """Returns a rule with a language that is subsumed by the languages
+        of all the descendents of the current node"""
+        return self
 
 
 # type alias
@@ -237,6 +247,17 @@ class HoleMatcher(Matcher):
     def num_matcher_holes(self):
         return 1
 
+    def over_approximation(self):
+        return WildcardMatcher()
+
+    def under_approximation(self):
+        return None
+
+
+class WildcardMatcher(Matcher):
+    def __str__(self):
+        return "#"
+
 
 class ExactMatcher(Matcher):
     def __init__(self, s: Text):
@@ -262,6 +283,11 @@ class Constraint(AstNode):
     """The base class for all token constraints."""
 
 
+class WildcardConstraint(Constraint):
+    def __str__(self):
+        return "#"
+
+
 class HoleConstraint(Constraint):
     def __str__(self):
         return config.SURFACE_HOLE_GLYPH
@@ -279,6 +305,12 @@ class HoleConstraint(Constraint):
             AndConstraint(HoleConstraint(), HoleConstraint()),
             OrConstraint(HoleConstraint(), HoleConstraint()),
         ]
+
+    def over_approximation(self):
+        return WildcardConstraint()
+
+    def under_approximation(self):
+        return None
 
 
 class FieldConstraint(Constraint):
@@ -323,6 +355,32 @@ class FieldConstraint(Constraint):
             + self.value.preorder_traversal()
         )
 
+    def over_approximation(self):
+        name = self.name.over_approximation()
+        if name is None:
+            return None
+        if isinstance(name, WildcardMatcher):
+            return WildcardConstraint()
+        value = self.value.over_approximation()
+        if value is None:
+            return None
+        if isinstance(value, WildcardMatcher):
+            return WildcardConstraint()
+        return FieldConstraint(name, value)
+
+    def under_approximation(self):
+        name = self.name.under_approximation()
+        if name is None:
+            return None
+        if isinstance(name, WildcardMatcher):
+            return WildcardConstraint()
+        value = self.value.under_approximation()
+        if value is None:
+            return None
+        if isinstance(value, WildcardMatcher):
+            return WildcardConstraint()
+        return FieldConstraint(name, value)
+
 
 class NotConstraint(Constraint):
     def __init__(self, c: Constraint):
@@ -360,6 +418,22 @@ class NotConstraint(Constraint):
 
     def permutations(self):
         return [NotConstraint(p) for p in self.constraint.permutations()]
+
+    def over_approximation(self):
+        constraint = self.constraint.over_approximation()
+        if constraint is None:
+            return WildcardConstraint()
+        if isinstance(constraint, WildcardConstraint):
+            return None
+        return NotConstraint(constraint)
+
+    def under_approximation(self):
+        constraint = self.constraint.under_approximation()
+        if constraint is None:
+            return WildcardConstraint()
+        if isinstance(constraint, WildcardConstraint):
+            return None
+        return NotConstraint(constraint)
 
 
 class AndConstraint(Constraint):
@@ -409,6 +483,28 @@ class AndConstraint(Constraint):
     def permutations(self):
         return get_all_trees(self)
 
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None or rhs is None:
+            return None
+        if isinstance(lhs, WildcardConstraint):
+            return rhs
+        if isinstance(rhs, WildcardConstraint):
+            return lhs
+        return AndConstraint(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None or rhs is None:
+            return None
+        if isinstance(lhs, WildcardConstraint):
+            return rhs
+        if isinstance(rhs, WildcardConstraint):
+            return lhs
+        return AndConstraint(lhs, rhs)
+
 
 class OrConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
@@ -453,6 +549,28 @@ class OrConstraint(Constraint):
     def permutations(self):
         return get_all_trees(self)
 
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        if isinstance(lhs, WildcardConstraint) or isinstance(rhs, WildcardConstraint):
+            return WildcardConstraint()
+        return OrConstraint(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        if isinstance(lhs, WildcardConstraint) or isinstance(rhs, WildcardConstraint):
+            return WildcardConstraint()
+        return OrConstraint(lhs, rhs)
+
 
 ####################
 # surface patterns
@@ -490,6 +608,12 @@ class HoleSurface(Surface):
                 RepeatSurface(HoleSurface(), 1, None),
             ]
         return candidates
+
+    def over_approximation(self):
+        return RepeatSurface(WildcardSurface(), 0, None)
+
+    def under_approximation(self):
+        return None
 
 
 class WildcardSurface(Surface):
@@ -531,6 +655,22 @@ class TokenSurface(Surface):
 
     def permutations(self):
         return [TokenSurface(p) for p in self.constraint.permutations()]
+
+    def over_approximation(self):
+        constraint = self.constraint.over_approximation()
+        if constraint is None:
+            return None
+        if isinstance(constraint, WildcardConstraint):
+            return WildcardSurface()
+        return TokenSurface(constraint)
+
+    def under_approximation(self):
+        constraint = self.constraint.under_approximation()
+        if constraint is None:
+            return None
+        if isinstance(constraint, WildcardConstraint):
+            return WildcardSurface()
+        return TokenSurface(constraint)
 
 
 class ConcatSurface(Surface):
@@ -584,6 +724,24 @@ class ConcatSurface(Surface):
     def permutations(self):
         return get_all_trees(self)
 
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.over_approximation()
+        if rhs is None:
+            return None
+        return ConcatSurface(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.under_approximation()
+        if rhs is None:
+            return None
+        return ConcatSurface(lhs, rhs)
+
 
 class OrSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
@@ -631,6 +789,24 @@ class OrSurface(Surface):
     def permutations(self):
         return get_all_trees(self)
 
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrSurface(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrSurface(lhs, rhs)
+
 
 class RepeatSurface(Surface):
     def __init__(self, surf: Surface, min: int, max: Optional[int]):
@@ -676,6 +852,18 @@ class RepeatSurface(Surface):
     def permutations(self):
         return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]
 
+    def over_approximation(self):
+        surf = self.surf.over_approximation()
+        if surf is None:
+            return None
+        return RepeatSurface(surf, self.min, self.max)
+
+    def under_approximation(self):
+        surf = self.surf.under_approximation()
+        if surf is None:
+            return None
+        return RepeatSurface(surf, self.min, self.max)
+
 
 ####################
 # traversal patterns
@@ -718,21 +906,25 @@ class HoleTraversal(Traversal):
             ]
         return candidates
 
+    def over_approximation(self):
+        return RepeatTraversal(
+            OrTraversal(IncomingWildcardTraversal(), OutgoingWildcardTraversal()),
+            0,
+            None,
+        )
+
+    def under_approximation(self):
+        return None
+
 
 class IncomingWildcardTraversal(Traversal):
     def __str__(self):
         return "<<"
 
-    def tokens(self):
-        return ["<<"]
-
 
 class OutgoingWildcardTraversal(Traversal):
     def __str__(self):
         return ">>"
-
-    def tokens(self):
-        return [">>"]
 
 
 class IncomingLabelTraversal(Traversal):
@@ -769,6 +961,22 @@ class IncomingLabelTraversal(Traversal):
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()
 
+    def over_approximation(self):
+        label = self.label.over_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return IncomingWildcardTraversal()
+        return IncomingLabelTraversal(label)
+
+    def under_approximation(self):
+        label = self.label.under_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return IncomingWildcardTraversal()
+        return IncomingLabelTraversal(label)
+
 
 class OutgoingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
@@ -803,6 +1011,22 @@ class OutgoingLabelTraversal(Traversal):
 
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()
+
+    def over_approximation(self):
+        label = self.label.over_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return OutgoingWildcardTraversal()
+        return OutgoingLabelTraversal(label)
+
+    def under_approximation(self):
+        label = self.label.under_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return OutgoingWildcardTraversal()
+        return OutgoingLabelTraversal(label)
 
 
 class ConcatTraversal(Traversal):
@@ -853,6 +1077,24 @@ class ConcatTraversal(Traversal):
     def permutations(self):
         return get_all_trees(self)
 
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.over_approximation()
+        if rhs is None:
+            return None
+        return ConcatTraversal(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.under_approximation()
+        if rhs is None:
+            return None
+        return ConcatTraversal(lhs, rhs)
+
 
 class OrTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
@@ -896,6 +1138,24 @@ class OrTraversal(Traversal):
 
     def permutations(self):
         return get_all_trees(self)
+
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrTraversal(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrTraversal(lhs, rhs)
 
 
 class RepeatTraversal(Traversal):
@@ -941,6 +1201,18 @@ class RepeatTraversal(Traversal):
             for p in self.traversal.permutations()
         ]
 
+    def over_approximation(self):
+        traversal = self.traversal.over_approximation()
+        if traversal is None:
+            return None
+        return RepeatTraversal(traversal, self.min, self.max)
+
+    def under_approximation(self):
+        traversal = self.traversal.under_approximation()
+        if traversal is None:
+            return None
+        return RepeatTraversal(traversal, self.min, self.max)
+
 
 ####################
 # query
@@ -966,6 +1238,12 @@ class HoleQuery(Query):
             HoleSurface(),
             HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
         ]
+
+    def over_approximation(self):
+        raise NotImplementedError()
+
+    def under_approximation(self):
+        raise NotImplementedError()
 
 
 class HybridQuery(Query):
@@ -1057,3 +1335,27 @@ class HybridQuery(Query):
             for traversal in self.traversal.permutations()
             for dst in self.dst.permutations()
         ]
+
+    def over_approximation(self):
+        src = self.src.under_approximation()
+        if src is None:
+            return None
+        traversal = self.traversal.under_approximation()
+        if traversal is None:
+            return None
+        dst = self.dst.under_approximation()
+        if dst is None:
+            return None
+        return HybridQuery(src, traversal, dst)
+
+    def under_approximation(self):
+        src = self.src.under_approximation()
+        if src is None:
+            return None
+        traversal = self.traversal.under_approximation()
+        if traversal is None:
+            return None
+        dst = self.dst.under_approximation()
+        if dst is None:
+            return None
+        return HybridQuery(src, traversal, dst)
