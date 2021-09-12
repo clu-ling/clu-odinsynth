@@ -887,6 +887,11 @@ class RepeatSurface(Surface):
             return None
         return RepeatSurface(surf, self.min, self.max)
 
+    def unroll(self):
+        if self.min <= 1 and self.max is None:
+            return ConcatSurface(self.surf, ConcatSurface(self.surf, self))
+        return self
+
 
 ####################
 # traversal patterns
@@ -1118,6 +1123,17 @@ class ConcatTraversal(Traversal):
             return None
         return ConcatTraversal(lhs, rhs)
 
+    def unroll(self):
+        return ConcatTraversal(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        results = []
+        for lhs in self.lhs.split():
+            results.append(ConcatTraversal(lhs, self.rhs))
+        for rhs in self.rhs.split():
+            results.append(ConcatSurface(self.lhs, rhs))
+        return results
+
 
 class OrTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
@@ -1180,6 +1196,12 @@ class OrTraversal(Traversal):
             return lhs
         return OrTraversal(lhs, rhs)
 
+    def unroll(self):
+        return OrTraversal(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        return self.lhs.split() + self.rhs.split()
+
 
 class RepeatTraversal(Traversal):
     def __init__(self, traversal: Traversal, min: int, max: Optional[int]):
@@ -1235,6 +1257,13 @@ class RepeatTraversal(Traversal):
         if traversal is None:
             return None
         return RepeatTraversal(traversal, self.min, self.max)
+
+    def unroll(self):
+        if self.min <= 1 and self.max is None:
+            return ConcatTraversal(
+                self.traversal, ConcatTraversal(self.traversal, self)
+            )
+        return self
 
 
 ####################
@@ -1382,3 +1411,20 @@ class HybridQuery(Query):
         if dst is None:
             return None
         return HybridQuery(src, traversal, dst)
+
+    def unroll(self):
+        return HybridQuery(
+            self.src.unroll(),
+            self.traversal.unroll(),
+            self.dst.unroll(),
+        )
+
+    def split(self):
+        results = []
+        for src in self.src.split():
+            results.append(HybridQuery(src, self.traversal, self.dst))
+        for traversal in self.traversal.split():
+            results.append(HybridQuery(self.src, traversal, self.dst))
+        for dst in self.dst.split():
+            results.append(HybridQuery(self.src, self.traversal, dst))
+        return results
