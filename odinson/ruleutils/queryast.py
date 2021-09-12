@@ -140,6 +140,12 @@ class AstNode:
         of all the descendents of the current node"""
         return self
 
+    def unroll(self) -> AstNode:
+        return self
+
+    def split(self) -> List[AstNode]:
+        return [self]
+
 
 # type alias
 Types = Type[Union[AstNode, Tuple[AstNode]]]
@@ -742,6 +748,17 @@ class ConcatSurface(Surface):
             return None
         return ConcatSurface(lhs, rhs)
 
+    def unroll(self):
+        return ConcatSurface(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        results = []
+        for lhs in self.lhs.split():
+            results.append(ConcatSurface(lhs, self.rhs))
+        for rhs in self.rhs.split():
+            results.append(ConcatSurface(self.lhs, rhs))
+        return results
+
 
 class OrSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
@@ -806,6 +823,12 @@ class OrSurface(Surface):
         if rhs is None:
             return lhs
         return OrSurface(lhs, rhs)
+
+    def unroll(self):
+        return OrSurface(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        return self.lhs.split() + self.rhs.split()
 
 
 class RepeatSurface(Surface):
