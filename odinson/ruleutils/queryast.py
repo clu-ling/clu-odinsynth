@@ -141,9 +141,11 @@ class AstNode:
         return self
 
     def unroll(self) -> AstNode:
+        """unroll repetitions"""
         return self
 
     def split(self) -> List[AstNode]:
+        """decompose rule"""
         return [self]
 
 
