@@ -140,6 +140,9 @@ class AstNode:
         of all the descendents of the current node"""
         return self
 
+    def redundancy_patterns(self) -> List[AstNode]:
+        return [n.over_approximation() for n in set(self.unroll().split())]
+
     def unroll(self) -> AstNode:
         """unroll repetitions"""
         return self
