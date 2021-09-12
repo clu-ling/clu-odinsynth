@@ -1337,13 +1337,13 @@ class HybridQuery(Query):
         ]
 
     def over_approximation(self):
-        src = self.src.under_approximation()
+        src = self.src.over_approximation()
         if src is None:
             return None
-        traversal = self.traversal.under_approximation()
+        traversal = self.traversal.over_approximation()
         if traversal is None:
             return None
-        dst = self.dst.under_approximation()
+        dst = self.dst.over_approximation()
         if dst is None:
             return None
         return HybridQuery(src, traversal, dst)
