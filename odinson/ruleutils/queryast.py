@@ -582,6 +582,9 @@ class OrConstraint(Constraint):
             return WildcardConstraint()
         return OrConstraint(lhs, rhs)
 
+    def split(self):
+        return self.lhs.split() + self.rhs.split()
+
 
 ####################
 # surface patterns
@@ -682,6 +685,12 @@ class TokenSurface(Surface):
         if isinstance(constraint, WildcardConstraint):
             return WildcardSurface()
         return TokenSurface(constraint)
+
+    def unroll(self):
+        return TokenSurface(self.constraint.unroll())
+
+    def split(self):
+        return [TokenSurface(c) for c in self.constraint.split()]
 
 
 class ConcatSurface(Surface):
