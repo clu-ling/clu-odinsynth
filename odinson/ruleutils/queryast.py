@@ -130,7 +130,7 @@ class AstNode:
         """Returns all trees that are equivalent to this AstNode."""
         return [self]
 
-    def over_approximation(self) -> AstNode:
+    def over_approximation(self) -> Optional[AstNode]:
         """Returns a rule with a language that contains all the languages
         of the current node's descendents."""
         return self
