@@ -52,7 +52,9 @@ traversal_hole = config.TRAVERSAL_HOLE_GLYPH
 query_hole = config.QUERY_HOLE_GLYPH
 number = Word(nums).setParseAction(lambda t: int(t[0]))
 identifier = Word(alphas + &#34;_&#34;, alphanums + &#34;_&#34;)
-quoted_string = QuotedString(&#39;&#34;&#39;, unquoteResults=True, escChar=&#34;\\&#34;)
+single_quoted_string = QuotedString(&#34;&#39;&#34;, unquoteResults=True, escChar=&#34;\\&#34;)
+double_quoted_string = QuotedString(&#39;&#34;&#39;, unquoteResults=True, escChar=&#34;\\&#34;)
+quoted_string = single_quoted_string | double_quoted_string
 string = identifier | quoted_string
 
 # number to the left of the comma {n,}
