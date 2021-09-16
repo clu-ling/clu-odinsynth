@@ -304,14 +304,14 @@ class FieldConstraint(Constraint):
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.name.is_hole():
             return [
-                FieldConstraint(ExactMatcher(k), self.value)
-                for k in vocabularies
-                if k != config.SYNTAX_FIELD
+                FieldConstraint(ExactMatcher(name), self.value)
+                for name in vocabularies
+                if name not in config.EXCLUDE_FIELDS
             ]
         elif self.value.is_hole():
             return [
-                FieldConstraint(self.name, ExactMatcher(v))
-                for v in vocabularies[self.name.string]
+                FieldConstraint(self.name, ExactMatcher(value))
+                for value in vocabularies[self.name.string]
             ]
         else:
             return []
