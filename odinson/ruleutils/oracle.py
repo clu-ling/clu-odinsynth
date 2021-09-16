@@ -212,6 +212,9 @@ def make_minimal_vocabularies(node: AstNode) -> Vocabularies:
             name = n.name.string
             value = n.value.string
             vocabularies[name].add(value)
+        if isinstance(n, MentionSurface):
+            label = n.label.string
+            vocabularies[config.ENTITY_FIELD].add(label)
         elif isinstance(n, (IncomingLabelTraversal, OutgoingLabelTraversal)):
             label = n.label.string
             vocabularies[config.SYNTAX_FIELD].add(label)
