@@ -85,12 +85,14 @@ def path_from_root(
 def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; Surface:
     if &#34;allow_wildcards&#34; in kwargs:
         kwargs[&#34;allow_surface_wildcards&#34;] = kwargs[&#34;allow_wildcards&#34;]
-    if &#34;allow_alternation&#34; in kwargs:
-        kwargs[&#34;allow_surface_alternation&#34;] = kwargs[&#34;allow_alternation&#34;]
-    if &#34;allow_concatenation&#34; in kwargs:
-        kwargs[&#34;allow_surface_concatenation&#34;] = kwargs[&#34;allow_concatenation&#34;]
-    if &#34;allow_repetition&#34; in kwargs:
-        kwargs[&#34;allow_surface_repetition&#34;] = kwargs[&#34;allow_repetition&#34;]
+    if &#34;allow_mentions&#34; in kwargs:
+        kwargs[&#34;allow_surface_mentions&#34;] = kwargs[&#34;allow_mentions&#34;]
+    if &#34;allow_alternations&#34; in kwargs:
+        kwargs[&#34;allow_surface_alternations&#34;] = kwargs[&#34;allow_alternations&#34;]
+    if &#34;allow_concatenations&#34; in kwargs:
+        kwargs[&#34;allow_surface_concatenations&#34;] = kwargs[&#34;allow_concatenations&#34;]
+    if &#34;allow_repetitions&#34; in kwargs:
+        kwargs[&#34;allow_surface_repetitions&#34;] = kwargs[&#34;allow_repetitions&#34;]
     tree = random_tree(HoleSurface(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_odinson_query(str(tree))
@@ -102,12 +104,12 @@ def random_traversal(
 ) -&gt; Traversal:
     if &#34;allow_wildcards&#34; in kwargs:
         kwargs[&#34;allow_traversal_wildcards&#34;] = kwargs[&#34;allow_wildcards&#34;]
-    if &#34;allow_alternation&#34; in kwargs:
-        kwargs[&#34;allow_traversal_alternation&#34;] = kwargs[&#34;allow_alternation&#34;]
-    if &#34;allow_concatenation&#34; in kwargs:
-        kwargs[&#34;allow_traversal_concatenation&#34;] = kwargs[&#34;allow_concatenation&#34;]
-    if &#34;allow_repetition&#34; in kwargs:
-        kwargs[&#34;allow_traversal_repetition&#34;] = kwargs[&#34;allow_repetition&#34;]
+    if &#34;allow_alternations&#34; in kwargs:
+        kwargs[&#34;allow_traversal_alternations&#34;] = kwargs[&#34;allow_alternations&#34;]
+    if &#34;allow_concatenations&#34; in kwargs:
+        kwargs[&#34;allow_traversal_concatenations&#34;] = kwargs[&#34;allow_concatenations&#34;]
+    if &#34;allow_repetitions&#34; in kwargs:
+        kwargs[&#34;allow_traversal_repetitions&#34;] = kwargs[&#34;allow_repetitions&#34;]
     tree = random_tree(HoleTraversal(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_traversal(str(tree))
@@ -239,6 +241,9 @@ def make_minimal_vocabularies(node: AstNode) -&gt; Vocabularies:
             name = n.name.string
             value = n.value.string
             vocabularies[name].add(value)
+        if isinstance(n, MentionSurface):
+            label = n.label.string
+            vocabularies[config.ENTITY_FIELD].add(label)
         elif isinstance(n, (IncomingLabelTraversal, OutgoingLabelTraversal)):
             label = n.label.string
             vocabularies[config.SYNTAX_FIELD].add(label)
@@ -315,6 +320,9 @@ because the nodes may contain holes.</p></div>
             name = n.name.string
             value = n.value.string
             vocabularies[name].add(value)
+        if isinstance(n, MentionSurface):
+            label = n.label.string
+            vocabularies[config.ENTITY_FIELD].add(label)
         elif isinstance(n, (IncomingLabelTraversal, OutgoingLabelTraversal)):
             label = n.label.string
             vocabularies[config.SYNTAX_FIELD].add(label)
@@ -421,12 +429,14 @@ to the specified AstNode.</p></div>
 <pre><code class="python">def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; Surface:
     if &#34;allow_wildcards&#34; in kwargs:
         kwargs[&#34;allow_surface_wildcards&#34;] = kwargs[&#34;allow_wildcards&#34;]
-    if &#34;allow_alternation&#34; in kwargs:
-        kwargs[&#34;allow_surface_alternation&#34;] = kwargs[&#34;allow_alternation&#34;]
-    if &#34;allow_concatenation&#34; in kwargs:
-        kwargs[&#34;allow_surface_concatenation&#34;] = kwargs[&#34;allow_concatenation&#34;]
-    if &#34;allow_repetition&#34; in kwargs:
-        kwargs[&#34;allow_surface_repetition&#34;] = kwargs[&#34;allow_repetition&#34;]
+    if &#34;allow_mentions&#34; in kwargs:
+        kwargs[&#34;allow_surface_mentions&#34;] = kwargs[&#34;allow_mentions&#34;]
+    if &#34;allow_alternations&#34; in kwargs:
+        kwargs[&#34;allow_surface_alternations&#34;] = kwargs[&#34;allow_alternations&#34;]
+    if &#34;allow_concatenations&#34; in kwargs:
+        kwargs[&#34;allow_surface_concatenations&#34;] = kwargs[&#34;allow_concatenations&#34;]
+    if &#34;allow_repetitions&#34; in kwargs:
+        kwargs[&#34;allow_surface_repetitions&#34;] = kwargs[&#34;allow_repetitions&#34;]
     tree = random_tree(HoleSurface(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_odinson_query(str(tree))
@@ -447,12 +457,12 @@ to the specified AstNode.</p></div>
 ) -&gt; Traversal:
     if &#34;allow_wildcards&#34; in kwargs:
         kwargs[&#34;allow_traversal_wildcards&#34;] = kwargs[&#34;allow_wildcards&#34;]
-    if &#34;allow_alternation&#34; in kwargs:
-        kwargs[&#34;allow_traversal_alternation&#34;] = kwargs[&#34;allow_alternation&#34;]
-    if &#34;allow_concatenation&#34; in kwargs:
-        kwargs[&#34;allow_traversal_concatenation&#34;] = kwargs[&#34;allow_concatenation&#34;]
-    if &#34;allow_repetition&#34; in kwargs:
-        kwargs[&#34;allow_traversal_repetition&#34;] = kwargs[&#34;allow_repetition&#34;]
+    if &#34;allow_alternations&#34; in kwargs:
+        kwargs[&#34;allow_traversal_alternations&#34;] = kwargs[&#34;allow_alternations&#34;]
+    if &#34;allow_concatenations&#34; in kwargs:
+        kwargs[&#34;allow_traversal_concatenations&#34;] = kwargs[&#34;allow_concatenations&#34;]
+    if &#34;allow_repetitions&#34; in kwargs:
+        kwargs[&#34;allow_traversal_repetitions&#34;] = kwargs[&#34;allow_repetitions&#34;]
     tree = random_tree(HoleTraversal(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_traversal(str(tree))

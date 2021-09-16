@@ -27,10 +27,10 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from pyparsing import *
-from odinson.ruleutils.queryast import *
-from typing import Text
+<pre><code class="python">from typing import Text
+from pyparsing import *
 from odinson.ruleutils import config
+from odinson.ruleutils.queryast import *
 
 # punctuation
 comma = Literal(&#34;,&#34;).suppress()
@@ -38,6 +38,7 @@ equals = Literal(&#34;=&#34;).suppress()
 vbar = Literal(&#34;|&#34;).suppress()
 lt = Literal(&#34;&lt;&#34;).suppress()
 gt = Literal(&#34;&gt;&#34;).suppress()
+at = Literal(&#34;@&#34;).suppress()
 ampersand = Literal(&#34;&amp;&#34;).suppress()
 open_curly = Literal(&#34;{&#34;).suppress()
 close_curly = Literal(&#34;}&#34;).suppress()
@@ -138,8 +139,17 @@ token_surface = token_wildcard | token_constraint
 # forward declaration, defined below
 or_surface = Forward()
 
+# an entity or event mention
+mention_surface = at + matcher
+mention_surface.setParseAction(lambda t: MentionSurface(t[0]))
+
 # an expression that represents a single query
-atomic_surface = hole_surface | token_surface | open_parens + or_surface + close_parens
+atomic_surface = (
+    hole_surface
+    | token_surface
+    | mention_surface
+    | open_parens + or_surface + close_parens
+)
 
 # a query with an optional quantifier
 repeat_surface = atomic_surface + Optional(quantifier)

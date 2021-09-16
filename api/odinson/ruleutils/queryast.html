@@ -51,6 +51,7 @@ __all__ = [
     &#34;HoleSurface&#34;,
     &#34;WildcardSurface&#34;,
     &#34;TokenSurface&#34;,
+    &#34;MentionSurface&#34;,
     &#34;ConcatSurface&#34;,
     &#34;OrSurface&#34;,
     &#34;RepeatSurface&#34;,
@@ -333,14 +334,14 @@ class FieldConstraint(Constraint):
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.name.is_hole():
             return [
-                FieldConstraint(ExactMatcher(k), self.value)
-                for k in vocabularies
-                if k != config.SYNTAX_FIELD
+                FieldConstraint(ExactMatcher(name), self.value)
+                for name in vocabularies
+                if name not in config.EXCLUDE_FIELDS
             ]
         elif self.value.is_hole():
             return [
-                FieldConstraint(self.name, ExactMatcher(v))
-                for v in vocabularies[self.name.string]
+                FieldConstraint(self.name, ExactMatcher(value))
+                for value in vocabularies[self.name.string]
             ]
         else:
             return []
@@ -508,11 +509,16 @@ class HoleSurface(Surface):
         ]
         if kwargs.get(&#34;allow_surface_wildcards&#34;, True):
             candidates.append(WildcardSurface())
-        if kwargs.get(&#34;allow_surface_alternation&#34;, True):
+        if (
+            kwargs.get(&#34;allow_surface_mentions&#34;, True)
+            and config.ENTITY_FIELD in vocabularies
+        ):
+            candidates.append(MentionSurface(HoleMatcher()))
+        if kwargs.get(&#34;allow_surface_alternations&#34;, True):
             candidates.append(OrSurface(HoleSurface(), HoleSurface()))
-        if kwargs.get(&#34;allow_surface_concatenation&#34;, True):
+        if kwargs.get(&#34;allow_surface_concatenations&#34;, True):
             candidates.append(ConcatSurface(HoleSurface(), HoleSurface()))
-        if kwargs.get(&#34;allow_surface_repetition&#34;, True):
+        if kwargs.get(&#34;allow_surface_repetitions&#34;, True):
             candidates += [
                 RepeatSurface(HoleSurface(), 0, 1),
                 RepeatSurface(HoleSurface(), 0, None),
@@ -560,6 +566,33 @@ class TokenSurface(Surface):
 
     def permutations(self):
         return [TokenSurface(p) for p in self.constraint.permutations()]
+
+
+class MentionSurface(Surface):
+    def __init__(self, label: Matcher):
+        self.label = label
+
+    def __str__(self):
+        return f&#34;@{self.label}&#34;
+
+    def id_tuple(self):
+        return super().id_tuple() + (self.label,)
+
+    def has_holes(self):
+        return self.label.has_holes()
+
+    def tokens(self):
+        return [&#34;@&#34;] + self.label.tokens()
+
+    def num_matcher_holes(self):
+        return self.label.num_matcher_holes()
+
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
+        entities = vocabularies.get(config.ENTITY_FIELD, [])
+        return [MentionSurface(ExactMatcher(e)) for e in entities]
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.label.preorder_traversal()
 
 
 class ConcatSurface(Surface):
@@ -735,11 +768,11 @@ class HoleTraversal(Traversal):
                 IncomingWildcardTraversal(),
                 OutgoingWildcardTraversal(),
             ]
-        if kwargs.get(&#34;allow_traversal_alternation&#34;, True):
+        if kwargs.get(&#34;allow_traversal_alternations&#34;, True):
             candidates.append(OrTraversal(HoleTraversal(), HoleTraversal()))
-        if kwargs.get(&#34;allow_traversal_concatenation&#34;, True):
+        if kwargs.get(&#34;allow_traversal_concatenations&#34;, True):
             candidates.append(ConcatTraversal(HoleTraversal(), HoleTraversal()))
-        if kwargs.get(&#34;allow_traversal_repetition&#34;, True):
+        if kwargs.get(&#34;allow_traversal_repetitions&#34;, True):
             candidates += [
                 RepeatTraversal(HoleTraversal(), 0, 1),
                 RepeatTraversal(HoleTraversal(), 0, None),
@@ -1867,14 +1900,14 @@ returns an empty list.</p></div>
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.name.is_hole():
             return [
-                FieldConstraint(ExactMatcher(k), self.value)
-                for k in vocabularies
-                if k != config.SYNTAX_FIELD
+                FieldConstraint(ExactMatcher(name), self.value)
+                for name in vocabularies
+                if name not in config.EXCLUDE_FIELDS
             ]
         elif self.value.is_hole():
             return [
-                FieldConstraint(self.name, ExactMatcher(v))
-                for v in vocabularies[self.name.string]
+                FieldConstraint(self.name, ExactMatcher(value))
+                for value in vocabularies[self.name.string]
             ]
         else:
             return []
@@ -2102,11 +2135,16 @@ returns an empty list.</p></div>
         ]
         if kwargs.get(&#34;allow_surface_wildcards&#34;, True):
             candidates.append(WildcardSurface())
-        if kwargs.get(&#34;allow_surface_alternation&#34;, True):
+        if (
+            kwargs.get(&#34;allow_surface_mentions&#34;, True)
+            and config.ENTITY_FIELD in vocabularies
+        ):
+            candidates.append(MentionSurface(HoleMatcher()))
+        if kwargs.get(&#34;allow_surface_alternations&#34;, True):
             candidates.append(OrSurface(HoleSurface(), HoleSurface()))
-        if kwargs.get(&#34;allow_surface_concatenation&#34;, True):
+        if kwargs.get(&#34;allow_surface_concatenations&#34;, True):
             candidates.append(ConcatSurface(HoleSurface(), HoleSurface()))
-        if kwargs.get(&#34;allow_surface_repetition&#34;, True):
+        if kwargs.get(&#34;allow_surface_repetitions&#34;, True):
             candidates += [
                 RepeatSurface(HoleSurface(), 0, 1),
                 RepeatSurface(HoleSurface(), 0, None),
@@ -2169,11 +2207,11 @@ returns an empty list.</p></div>
                 IncomingWildcardTraversal(),
                 OutgoingWildcardTraversal(),
             ]
-        if kwargs.get(&#34;allow_traversal_alternation&#34;, True):
+        if kwargs.get(&#34;allow_traversal_alternations&#34;, True):
             candidates.append(OrTraversal(HoleTraversal(), HoleTraversal()))
-        if kwargs.get(&#34;allow_traversal_concatenation&#34;, True):
+        if kwargs.get(&#34;allow_traversal_concatenations&#34;, True):
             candidates.append(ConcatTraversal(HoleTraversal(), HoleTraversal()))
-        if kwargs.get(&#34;allow_traversal_repetition&#34;, True):
+        if kwargs.get(&#34;allow_traversal_repetitions&#34;, True):
             candidates += [
                 RepeatTraversal(HoleTraversal(), 0, 1),
                 RepeatTraversal(HoleTraversal(), 0, None),
@@ -2515,6 +2553,84 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="odinson.ruleutils.queryast.MentionSurface"><code class="flex name class">
+<span>class <span class="ident">MentionSurface</span></span>
+<span>(</span><span>label: <a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all surface patterns.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MentionSurface(Surface):
+    def __init__(self, label: Matcher):
+        self.label = label
+
+    def __str__(self):
+        return f&#34;@{self.label}&#34;
+
+    def id_tuple(self):
+        return super().id_tuple() + (self.label,)
+
+    def has_holes(self):
+        return self.label.has_holes()
+
+    def tokens(self):
+        return [&#34;@&#34;] + self.label.tokens()
+
+    def num_matcher_holes(self):
+        return self.label.num_matcher_holes()
+
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
+        entities = vocabularies.get(config.ENTITY_FIELD, [])
+        return [MentionSurface(ExactMatcher(e)) for e in entities]
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.label.preorder_traversal()</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="odinson.ruleutils.queryast.MentionSurface.id_tuple"><code class="name flex">
+<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def id_tuple(self):
+    return super().id_tuple() + (self.label,)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Surface" href="#odinson.ruleutils.queryast.Surface">Surface</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Surface.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3277,6 +3393,7 @@ returns an empty list.</p></div>
 <ul class="hlist">
 <li><a title="odinson.ruleutils.queryast.ConcatSurface" href="#odinson.ruleutils.queryast.ConcatSurface">ConcatSurface</a></li>
 <li><a title="odinson.ruleutils.queryast.HoleSurface" href="#odinson.ruleutils.queryast.HoleSurface">HoleSurface</a></li>
+<li><a title="odinson.ruleutils.queryast.MentionSurface" href="#odinson.ruleutils.queryast.MentionSurface">MentionSurface</a></li>
 <li><a title="odinson.ruleutils.queryast.OrSurface" href="#odinson.ruleutils.queryast.OrSurface">OrSurface</a></li>
 <li><a title="odinson.ruleutils.queryast.RepeatSurface" href="#odinson.ruleutils.queryast.RepeatSurface">RepeatSurface</a></li>
 <li><a title="odinson.ruleutils.queryast.TokenSurface" href="#odinson.ruleutils.queryast.TokenSurface">TokenSurface</a></li>
@@ -3577,6 +3694,12 @@ returns an empty list.</p></div>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.Matcher" href="#odinson.ruleutils.queryast.Matcher">Matcher</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.MentionSurface" href="#odinson.ruleutils.queryast.MentionSurface">MentionSurface</a></code></h4>
+<ul class="">
+<li><code><a title="odinson.ruleutils.queryast.MentionSurface.id_tuple" href="#odinson.ruleutils.queryast.MentionSurface.id_tuple">id_tuple</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.NotConstraint" href="#odinson.ruleutils.queryast.NotConstraint">NotConstraint</a></code></h4>
