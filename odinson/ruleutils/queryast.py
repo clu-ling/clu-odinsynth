@@ -22,6 +22,7 @@ __all__ = [
     "HoleSurface",
     "WildcardSurface",
     "TokenSurface",
+    "MentionSurface",
     "ConcatSurface",
     "OrSurface",
     "RepeatSurface",

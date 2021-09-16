@@ -9,6 +9,7 @@ equals = Literal("=").suppress()
 vbar = Literal("|").suppress()
 lt = Literal("<").suppress()
 gt = Literal(">").suppress()
+at = Literal("@").suppress()
 ampersand = Literal("&").suppress()
 open_curly = Literal("{").suppress()
 close_curly = Literal("}").suppress()
@@ -109,8 +110,17 @@ token_surface = token_wildcard | token_constraint
 # forward declaration, defined below
 or_surface = Forward()
 
+# an entity or event mention
+mention_surface = at + matcher
+mention_surface.setParseAction(lambda t: MentionSurface(t[0]))
+
 # an expression that represents a single query
-atomic_surface = hole_surface | token_surface | open_parens + or_surface + close_parens
+atomic_surface = (
+    hole_surface
+    | token_surface
+    | mention_surface
+    | open_parens + or_surface + close_parens
+)
 
 # a query with an optional quantifier
 repeat_surface = atomic_surface + Optional(quantifier)
