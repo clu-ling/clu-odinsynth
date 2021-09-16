@@ -480,7 +480,10 @@ class HoleSurface(Surface):
         ]
         if kwargs.get("allow_surface_wildcards", True):
             candidates.append(WildcardSurface())
-        if kwargs.get("allow_surface_mentions", True):
+        if (
+            kwargs.get("allow_surface_mentions", True)
+            and config.ENTITY_FIELD in vocabularies
+        ):
             candidates.append(MentionSurface(HoleMatcher()))
         if kwargs.get("allow_surface_alternations", True):
             candidates.append(OrSurface(HoleSurface(), HoleSurface()))
