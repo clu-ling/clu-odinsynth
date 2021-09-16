@@ -481,11 +481,11 @@ class HoleSurface(Surface):
             candidates.append(WildcardSurface())
         if kwargs.get("allow_surface_mentions", True):
             candidates.append(MentionSurface(HoleMatcher()))
-        if kwargs.get("allow_surface_alternation", True):
+        if kwargs.get("allow_surface_alternations", True):
             candidates.append(OrSurface(HoleSurface(), HoleSurface()))
-        if kwargs.get("allow_surface_concatenation", True):
+        if kwargs.get("allow_surface_concatenations", True):
             candidates.append(ConcatSurface(HoleSurface(), HoleSurface()))
-        if kwargs.get("allow_surface_repetition", True):
+        if kwargs.get("allow_surface_repetitions", True):
             candidates += [
                 RepeatSurface(HoleSurface(), 0, 1),
                 RepeatSurface(HoleSurface(), 0, None),
@@ -735,11 +735,11 @@ class HoleTraversal(Traversal):
                 IncomingWildcardTraversal(),
                 OutgoingWildcardTraversal(),
             ]
-        if kwargs.get("allow_traversal_alternation", True):
+        if kwargs.get("allow_traversal_alternations", True):
             candidates.append(OrTraversal(HoleTraversal(), HoleTraversal()))
-        if kwargs.get("allow_traversal_concatenation", True):
+        if kwargs.get("allow_traversal_concatenations", True):
             candidates.append(ConcatTraversal(HoleTraversal(), HoleTraversal()))
-        if kwargs.get("allow_traversal_repetition", True):
+        if kwargs.get("allow_traversal_repetitions", True):
             candidates += [
                 RepeatTraversal(HoleTraversal(), 0, 1),
                 RepeatTraversal(HoleTraversal(), 0, None),
