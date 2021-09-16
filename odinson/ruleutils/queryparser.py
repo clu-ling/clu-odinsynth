@@ -1,7 +1,7 @@
-from pyparsing import *
-from odinson.ruleutils.queryast import *
 from typing import Text
+from pyparsing import *
 from odinson.ruleutils import config
+from odinson.ruleutils.queryast import *
 
 # punctuation
 comma = Literal(",").suppress()
