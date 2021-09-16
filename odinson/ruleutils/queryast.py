@@ -22,6 +22,7 @@ __all__ = [
     "HoleSurface",
     "WildcardSurface",
     "TokenSurface",
+    "MentionSurface",
     "ConcatSurface",
     "OrSurface",
     "RepeatSurface",
@@ -304,14 +305,14 @@ class FieldConstraint(Constraint):
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.name.is_hole():
             return [
-                FieldConstraint(ExactMatcher(k), self.value)
-                for k in vocabularies
-                if k != config.SYNTAX_FIELD
+                FieldConstraint(ExactMatcher(name), self.value)
+                for name in vocabularies
+                if name not in config.EXCLUDE_FIELDS
             ]
         elif self.value.is_hole():
             return [
-                FieldConstraint(self.name, ExactMatcher(v))
-                for v in vocabularies[self.name.string]
+                FieldConstraint(self.name, ExactMatcher(value))
+                for value in vocabularies[self.name.string]
             ]
         else:
             return []
@@ -479,11 +480,16 @@ class HoleSurface(Surface):
         ]
         if kwargs.get("allow_surface_wildcards", True):
             candidates.append(WildcardSurface())
-        if kwargs.get("allow_surface_alternation", True):
+        if (
+            kwargs.get("allow_surface_mentions", True)
+            and config.ENTITY_FIELD in vocabularies
+        ):
+            candidates.append(MentionSurface(HoleMatcher()))
+        if kwargs.get("allow_surface_alternations", True):
             candidates.append(OrSurface(HoleSurface(), HoleSurface()))
-        if kwargs.get("allow_surface_concatenation", True):
+        if kwargs.get("allow_surface_concatenations", True):
             candidates.append(ConcatSurface(HoleSurface(), HoleSurface()))
-        if kwargs.get("allow_surface_repetition", True):
+        if kwargs.get("allow_surface_repetitions", True):
             candidates += [
                 RepeatSurface(HoleSurface(), 0, 1),
                 RepeatSurface(HoleSurface(), 0, None),
@@ -531,6 +537,33 @@ class TokenSurface(Surface):
 
     def permutations(self):
         return [TokenSurface(p) for p in self.constraint.permutations()]
+
+
+class MentionSurface(Surface):
+    def __init__(self, label: Matcher):
+        self.label = label
+
+    def __str__(self):
+        return f"@{self.label}"
+
+    def id_tuple(self):
+        return super().id_tuple() + (self.label,)
+
+    def has_holes(self):
+        return self.label.has_holes()
+
+    def tokens(self):
+        return ["@"] + self.label.tokens()
+
+    def num_matcher_holes(self):
+        return self.label.num_matcher_holes()
+
+    def expand_leftmost_hole(self, vocabularies, **kwargs):
+        entities = vocabularies.get(config.ENTITY_FIELD, [])
+        return [MentionSurface(ExactMatcher(e)) for e in entities]
+
+    def preorder_traversal(self):
+        return super().preorder_traversal() + self.label.preorder_traversal()
 
 
 class ConcatSurface(Surface):
@@ -706,11 +739,11 @@ class HoleTraversal(Traversal):
                 IncomingWildcardTraversal(),
                 OutgoingWildcardTraversal(),
             ]
-        if kwargs.get("allow_traversal_alternation", True):
+        if kwargs.get("allow_traversal_alternations", True):
             candidates.append(OrTraversal(HoleTraversal(), HoleTraversal()))
-        if kwargs.get("allow_traversal_concatenation", True):
+        if kwargs.get("allow_traversal_concatenations", True):
             candidates.append(ConcatTraversal(HoleTraversal(), HoleTraversal()))
-        if kwargs.get("allow_traversal_repetition", True):
+        if kwargs.get("allow_traversal_repetitions", True):
             candidates += [
                 RepeatTraversal(HoleTraversal(), 0, 1),
                 RepeatTraversal(HoleTraversal(), 0, None),

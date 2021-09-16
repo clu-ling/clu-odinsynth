@@ -56,12 +56,14 @@ def path_from_root(
 def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> Surface:
     if "allow_wildcards" in kwargs:
         kwargs["allow_surface_wildcards"] = kwargs["allow_wildcards"]
-    if "allow_alternation" in kwargs:
-        kwargs["allow_surface_alternation"] = kwargs["allow_alternation"]
-    if "allow_concatenation" in kwargs:
-        kwargs["allow_surface_concatenation"] = kwargs["allow_concatenation"]
-    if "allow_repetition" in kwargs:
-        kwargs["allow_surface_repetition"] = kwargs["allow_repetition"]
+    if "allow_mentions" in kwargs:
+        kwargs["allow_surface_mentions"] = kwargs["allow_mentions"]
+    if "allow_alternations" in kwargs:
+        kwargs["allow_surface_alternations"] = kwargs["allow_alternations"]
+    if "allow_concatenations" in kwargs:
+        kwargs["allow_surface_concatenations"] = kwargs["allow_concatenations"]
+    if "allow_repetitions" in kwargs:
+        kwargs["allow_surface_repetitions"] = kwargs["allow_repetitions"]
     tree = random_tree(HoleSurface(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_odinson_query(str(tree))
@@ -73,12 +75,12 @@ def random_traversal(
 ) -> Traversal:
     if "allow_wildcards" in kwargs:
         kwargs["allow_traversal_wildcards"] = kwargs["allow_wildcards"]
-    if "allow_alternation" in kwargs:
-        kwargs["allow_traversal_alternation"] = kwargs["allow_alternation"]
-    if "allow_concatenation" in kwargs:
-        kwargs["allow_traversal_concatenation"] = kwargs["allow_concatenation"]
-    if "allow_repetition" in kwargs:
-        kwargs["allow_traversal_repetition"] = kwargs["allow_repetition"]
+    if "allow_alternations" in kwargs:
+        kwargs["allow_traversal_alternations"] = kwargs["allow_alternations"]
+    if "allow_concatenations" in kwargs:
+        kwargs["allow_traversal_concatenations"] = kwargs["allow_concatenations"]
+    if "allow_repetitions" in kwargs:
+        kwargs["allow_traversal_repetitions"] = kwargs["allow_repetitions"]
     tree = random_tree(HoleTraversal(), vocabularies, n_iters, **kwargs)
     # hack: pass tree through parser to make it right-heavy
     tree = parse_traversal(str(tree))
@@ -210,6 +212,9 @@ def make_minimal_vocabularies(node: AstNode) -> Vocabularies:
             name = n.name.string
             value = n.value.string
             vocabularies[name].add(value)
+        if isinstance(n, MentionSurface):
+            label = n.label.string
+            vocabularies[config.ENTITY_FIELD].add(label)
         elif isinstance(n, (IncomingLabelTraversal, OutgoingLabelTraversal)):
             label = n.label.string
             vocabularies[config.SYNTAX_FIELD].add(label)
