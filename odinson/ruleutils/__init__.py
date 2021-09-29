@@ -2,6 +2,7 @@ try:
     from .info import info
     from .queryparser import parse_odinson_query
     from .oracle import *
+    from .random import *
 
     __version__ = info.version
 
