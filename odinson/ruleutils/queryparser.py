@@ -3,6 +3,12 @@ from pyparsing import *
 from odinson.ruleutils import config
 from odinson.ruleutils.queryast import *
 
+__all__ = [
+    "parse_odinson_query",
+    "parse_surface",
+    "parse_traversal",
+]
+
 # punctuation
 comma = Literal(",").suppress()
 equals = Literal("=").suppress()

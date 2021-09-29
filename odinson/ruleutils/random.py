@@ -1,7 +1,7 @@
 import random
 from typing import Dict, List, Text
 from odinson.ruleutils.queryast import *
-from odinson.ruleutils.queryparser import parse_odinson_query, parse_traversal
+from odinson.ruleutils.queryparser import *
 
 
 # type alias
