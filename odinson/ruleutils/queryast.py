@@ -40,7 +40,7 @@ __all__ = [
 
 
 # type alias
-Vocabularies = Dict[Text, List[Text]]
+Vocabularies = config.Vocabularies
 
 
 class AstNode:

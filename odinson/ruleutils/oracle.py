@@ -1,10 +1,7 @@
 from collections import defaultdict
-from typing import Dict, Optional, List, Text
+from typing import Dict, Optional, List
 from odinson.ruleutils.queryast import *
-from odinson.ruleutils import config
-
-# type alias
-Vocabularies = Dict[Text, List[Text]]
+from odinson.ruleutils.config import Vocabularies, ENTITY_FIELD, SYNTAX_FIELD
 
 
 def make_transition_table(paths):
@@ -116,8 +113,8 @@ def make_minimal_vocabularies(node: AstNode) -> Vocabularies:
             vocabularies[name].add(value)
         if isinstance(n, MentionSurface):
             label = n.label.string
-            vocabularies[config.ENTITY_FIELD].add(label)
+            vocabularies[ENTITY_FIELD].add(label)
         elif isinstance(n, (IncomingLabelTraversal, OutgoingLabelTraversal)):
             label = n.label.string
-            vocabularies[config.SYNTAX_FIELD].add(label)
+            vocabularies[SYNTAX_FIELD].add(label)
     return {k: list(v) for k, v in vocabularies.items()}

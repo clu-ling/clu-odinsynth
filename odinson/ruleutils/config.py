@@ -1,4 +1,8 @@
 import re
+from typing import Dict, List, Text
+
+# type alias
+Vocabularies = Dict[Text, List[Text]]
 
 SURFACE_HOLE_GLYPH = "\u25a1"  # WHITE SQUARE
 TRAVERSAL_HOLE_GLYPH = "\u25b7"  # WHITE RIGHT-POINTING TRIANGLE

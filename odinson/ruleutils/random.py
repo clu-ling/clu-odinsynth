@@ -1,11 +1,7 @@
 import random
-from typing import Dict, List, Text
 from odinson.ruleutils.queryast import *
 from odinson.ruleutils.queryparser import *
-
-
-# type alias
-Vocabularies = Dict[Text, List[Text]]
+from odinson.ruleutils.config import Vocabularies
 
 
 def random_query(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -> AstNode:
