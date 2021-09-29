@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, Optional, List, Text, Type
+from typing import Dict, Optional, List, Text
 from odinson.ruleutils.queryast import *
 from odinson.ruleutils import config
 

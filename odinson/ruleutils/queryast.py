@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import re
 import json
 import itertools
 from typing import Dict, List, Optional, Text, Tuple, Type, Union
