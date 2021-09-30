@@ -54,7 +54,7 @@ setup(
     author_email=info.contact,
     license=info.license,
     # see https://python-packaging.readthedocs.io/en/latest/command-line-scripts.html
-    scripts=["bin/example-script", "bin/odinson-ruleutils-rest-api"],
+    scripts=["bin/example-script"],
     install_requires=required,
     classifiers=[
         "Intended Audience :: Science/Research",
