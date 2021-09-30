@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.9.2" />
-<title>odinson.ruleutils API documentation</title>
+<title>odinson.ruleutils.random API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -20,158 +20,122 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>odinson.ruleutils</code></h1>
+<h1 class="title">Module <code>odinson.ruleutils.random</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">try:
-    from .info import info
-    from .queryparser import parse_odinson_query
-    from .oracle import *
-    from .random import *
+<pre><code class="python">import random
+from odinson.ruleutils.queryast import *
+from odinson.ruleutils.queryparser import *
+from odinson.ruleutils.config import Vocabularies
 
-    __version__ = info.version
 
-    __all__ = [
-        &#34;parse_odinson_query&#34;,
-        &#34;path_from_root&#34;,
-        &#34;all_paths_from_root&#34;,
-        &#34;make_transition_table&#34;,
-        &#34;random_surface&#34;,
-        &#34;random_traversal&#34;,
-        &#34;random_hybrid&#34;,
-        &#34;random_query&#34;,
-    ]
+def random_query(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; AstNode:
+    if random.random() &lt; 0.5:
+        return random_surface(vocabularies, n_iters, **kwargs)
+    else:
+        return random_hybrid(vocabularies, n_iters, **kwargs)
 
-except Exception as e:
-    print(&#34;Failed to import info&#34;)
-    print(e)</code></pre>
+
+def random_hybrid(
+    vocabularies: Vocabularies, n_iters: int = 1, **kwargs
+) -&gt; HybridQuery:
+    return HybridQuery(
+        random_surface(vocabularies, n_iters, **kwargs),
+        random_traversal(vocabularies, n_iters, **kwargs),
+        random_query(vocabularies, n_iters, **kwargs),
+    )
+
+
+def random_surface(vocabularies: Vocabularies, n_iters: int = 1, **kwargs) -&gt; Surface:
+    if &#34;allow_wildcards&#34; in kwargs:
+        kwargs[&#34;allow_surface_wildcards&#34;] = kwargs[&#34;allow_wildcards&#34;]
+    if &#34;allow_mentions&#34; in kwargs:
+        kwargs[&#34;allow_surface_mentions&#34;] = kwargs[&#34;allow_mentions&#34;]
+    if &#34;allow_alternations&#34; in kwargs:
+        kwargs[&#34;allow_surface_alternations&#34;] = kwargs[&#34;allow_alternations&#34;]
+    if &#34;allow_concatenations&#34; in kwargs:
+        kwargs[&#34;allow_surface_concatenations&#34;] = kwargs[&#34;allow_concatenations&#34;]
+    if &#34;allow_repetitions&#34; in kwargs:
+        kwargs[&#34;allow_surface_repetitions&#34;] = kwargs[&#34;allow_repetitions&#34;]
+    tree = random_tree(HoleSurface(), vocabularies, n_iters, **kwargs)
+    # hack: pass tree through parser to make it right-heavy
+    tree = parse_odinson_query(str(tree))
+    return tree
+
+
+def random_traversal(
+    vocabularies: Vocabularies, n_iters: int = 1, **kwargs
+) -&gt; Traversal:
+    if &#34;allow_wildcards&#34; in kwargs:
+        kwargs[&#34;allow_traversal_wildcards&#34;] = kwargs[&#34;allow_wildcards&#34;]
+    if &#34;allow_alternations&#34; in kwargs:
+        kwargs[&#34;allow_traversal_alternations&#34;] = kwargs[&#34;allow_alternations&#34;]
+    if &#34;allow_concatenations&#34; in kwargs:
+        kwargs[&#34;allow_traversal_concatenations&#34;] = kwargs[&#34;allow_concatenations&#34;]
+    if &#34;allow_repetitions&#34; in kwargs:
+        kwargs[&#34;allow_traversal_repetitions&#34;] = kwargs[&#34;allow_repetitions&#34;]
+    tree = random_tree(HoleTraversal(), vocabularies, n_iters, **kwargs)
+    # hack: pass tree through parser to make it right-heavy
+    tree = parse_traversal(str(tree))
+    return tree
+
+
+def random_tree(
+    root: AstNode, vocabularies: Vocabularies, n_iters: int, **kwargs
+) -&gt; AstNode:
+    tree = root
+    # for a few iterations pick randomly from all candidates
+    for i in range(n_iters):
+        if not tree.has_holes():
+            break
+        candidates = tree.expand_leftmost_hole(vocabularies, **kwargs)
+        tree = random.choice(candidates)
+    # now we start to fill all remaining holes
+    while tree.has_holes():
+        query_holes = tree.num_query_holes()
+        traversal_holes = tree.num_traversal_holes()
+        surface_holes = tree.num_surface_holes()
+        constraint_holes = tree.num_constraint_holes()
+
+        def is_improvement(c):
+            qh = c.num_query_holes()
+            if qh &lt; query_holes:
+                return True
+            if qh &gt; query_holes:
+                return False
+            th = c.num_traversal_holes()
+            if th &lt; traversal_holes:
+                return True
+            if th &gt; traversal_holes:
+                return False
+            sh = c.num_surface_holes()
+            if sh &lt; surface_holes:
+                return True
+            if sh &gt; surface_holes:
+                return False
+            ch = c.num_constraint_holes()
+            return ch &lt;= constraint_holes
+
+        # discard candidates that don&#39;t improve the tree
+        candidates = tree.expand_leftmost_hole(vocabularies, **kwargs)
+        candidates = [c for c in candidates if is_improvement(c)]
+        # pick from good candidates only
+        tree = random.choice(candidates)
+    return tree</code></pre>
 </details>
 </section>
 <section>
-<h2 class="section-title" id="header-submodules">Sub-modules</h2>
-<dl>
-<dt><code class="name"><a title="odinson.ruleutils.config" href="config.html">odinson.ruleutils.config</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="odinson.ruleutils.info" href="info.html">odinson.ruleutils.info</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="odinson.ruleutils.oracle" href="oracle.html">odinson.ruleutils.oracle</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="odinson.ruleutils.queryast" href="queryast.html">odinson.ruleutils.queryast</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="odinson.ruleutils.queryparser" href="queryparser.html">odinson.ruleutils.queryparser</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="odinson.ruleutils.random" href="random.html">odinson.ruleutils.random</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 </section>
 <section>
 </section>
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="odinson.ruleutils.all_paths_from_root"><code class="name flex">
-<span>def <span class="ident">all_paths_from_root</span></span>(<span>target: <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>, vocabularies: Union[Dict[str, List[str]], NoneType] = None) ‑> List[List[<a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>]]</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Returns all episodes that render an equivalent rule to target.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def all_paths_from_root(
-    target: AstNode, vocabularies: Optional[Vocabularies] = None
-) -&gt; List[List[AstNode]]:
-    &#34;&#34;&#34;Returns all episodes that render an equivalent rule to target.&#34;&#34;&#34;
-    results = []
-    for p in target.permutations():
-        results.append(path_from_root(p, vocabularies))
-    return results</code></pre>
-</details>
-</dd>
-<dt id="odinson.ruleutils.make_transition_table"><code class="name flex">
-<span>def <span class="ident">make_transition_table</span></span>(<span>paths)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Gets a list of paths and returns a transition table.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def make_transition_table(paths):
-    &#34;&#34;&#34;Gets a list of paths and returns a transition table.&#34;&#34;&#34;
-    trans = defaultdict(set)
-    for path in paths:
-        for i in range(len(path) - 1):
-            trans[path[i]].add(path[i + 1])
-    return {k: list(v) for k, v in trans.items()}</code></pre>
-</details>
-</dd>
-<dt id="odinson.ruleutils.parse_odinson_query"><code class="name flex">
-<span>def <span class="ident">parse_odinson_query</span></span>(<span>pattern: str) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
-</code></dt>
-<dd>
-<div class="desc"><p>Gets a string and returns the corresponding AST.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def parse_odinson_query(pattern: Text) -&gt; AstNode:
-    &#34;&#34;&#34;Gets a string and returns the corresponding AST.&#34;&#34;&#34;
-    return top.parseString(pattern)[0]</code></pre>
-</details>
-</dd>
-<dt id="odinson.ruleutils.path_from_root"><code class="name flex">
-<span>def <span class="ident">path_from_root</span></span>(<span>target: <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>, vocabularies: Union[Dict[str, List[str]], NoneType] = None) ‑> List[<a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Returns the sequence of transitions from the root of the search tree
-to the specified AstNode.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def path_from_root(
-    target: AstNode, vocabularies: Optional[Vocabularies] = None
-) -&gt; List[AstNode]:
-    &#34;&#34;&#34;
-    Returns the sequence of transitions from the root of the search tree
-    to the specified AstNode.
-    &#34;&#34;&#34;
-    if isinstance(target, Query):
-        root = HoleQuery()
-    elif isinstance(target, Traversal):
-        root = HoleTraversal()
-    elif isinstance(target, Surface):
-        root = HoleSurface()
-    elif isinstance(target, Constraint):
-        root = HoleConstraint()
-    else:
-        raise ValueError(f&#34;unsupported target type &#39;{type(target)}&#39;&#34;)
-    if vocabularies is None:
-        # If no vocabularies were provided then construct
-        # the minimal vocabularies required to reach the target.
-        vocabularies = make_minimal_vocabularies(target)
-    oracle = Oracle(root, target, vocabularies)
-    return list(oracle.traversal())</code></pre>
-</details>
-</dd>
-<dt id="odinson.ruleutils.random_hybrid"><code class="name flex">
+<dt id="odinson.ruleutils.random.random_hybrid"><code class="name flex">
 <span>def <span class="ident">random_hybrid</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1, **kwargs) ‑> <a title="odinson.ruleutils.queryast.HybridQuery" href="queryast.html#odinson.ruleutils.queryast.HybridQuery">HybridQuery</a></span>
 </code></dt>
 <dd>
@@ -190,7 +154,7 @@ to the specified AstNode.</p></div>
     )</code></pre>
 </details>
 </dd>
-<dt id="odinson.ruleutils.random_query"><code class="name flex">
+<dt id="odinson.ruleutils.random.random_query"><code class="name flex">
 <span>def <span class="ident">random_query</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1, **kwargs) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
 </code></dt>
 <dd>
@@ -206,7 +170,7 @@ to the specified AstNode.</p></div>
         return random_hybrid(vocabularies, n_iters, **kwargs)</code></pre>
 </details>
 </dd>
-<dt id="odinson.ruleutils.random_surface"><code class="name flex">
+<dt id="odinson.ruleutils.random.random_surface"><code class="name flex">
 <span>def <span class="ident">random_surface</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1, **kwargs) ‑> <a title="odinson.ruleutils.queryast.Surface" href="queryast.html#odinson.ruleutils.queryast.Surface">Surface</a></span>
 </code></dt>
 <dd>
@@ -232,7 +196,7 @@ to the specified AstNode.</p></div>
     return tree</code></pre>
 </details>
 </dd>
-<dt id="odinson.ruleutils.random_traversal"><code class="name flex">
+<dt id="odinson.ruleutils.random.random_traversal"><code class="name flex">
 <span>def <span class="ident">random_traversal</span></span>(<span>vocabularies: Dict[str, List[str]], n_iters: int = 1, **kwargs) ‑> <a title="odinson.ruleutils.queryast.Traversal" href="queryast.html#odinson.ruleutils.queryast.Traversal">Traversal</a></span>
 </code></dt>
 <dd>
@@ -258,6 +222,59 @@ to the specified AstNode.</p></div>
     return tree</code></pre>
 </details>
 </dd>
+<dt id="odinson.ruleutils.random.random_tree"><code class="name flex">
+<span>def <span class="ident">random_tree</span></span>(<span>root: <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>, vocabularies: Dict[str, List[str]], n_iters: int, **kwargs) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def random_tree(
+    root: AstNode, vocabularies: Vocabularies, n_iters: int, **kwargs
+) -&gt; AstNode:
+    tree = root
+    # for a few iterations pick randomly from all candidates
+    for i in range(n_iters):
+        if not tree.has_holes():
+            break
+        candidates = tree.expand_leftmost_hole(vocabularies, **kwargs)
+        tree = random.choice(candidates)
+    # now we start to fill all remaining holes
+    while tree.has_holes():
+        query_holes = tree.num_query_holes()
+        traversal_holes = tree.num_traversal_holes()
+        surface_holes = tree.num_surface_holes()
+        constraint_holes = tree.num_constraint_holes()
+
+        def is_improvement(c):
+            qh = c.num_query_holes()
+            if qh &lt; query_holes:
+                return True
+            if qh &gt; query_holes:
+                return False
+            th = c.num_traversal_holes()
+            if th &lt; traversal_holes:
+                return True
+            if th &gt; traversal_holes:
+                return False
+            sh = c.num_surface_holes()
+            if sh &lt; surface_holes:
+                return True
+            if sh &gt; surface_holes:
+                return False
+            ch = c.num_constraint_holes()
+            return ch &lt;= constraint_holes
+
+        # discard candidates that don&#39;t improve the tree
+        candidates = tree.expand_leftmost_hole(vocabularies, **kwargs)
+        candidates = [c for c in candidates if is_improvement(c)]
+        # pick from good candidates only
+        tree = random.choice(candidates)
+    return tree</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -271,29 +288,16 @@ to the specified AstNode.</p></div>
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="odinson" href="../index.html">odinson</a></code></li>
-</ul>
-</li>
-<li><h3><a href="#header-submodules">Sub-modules</a></h3>
-<ul>
-<li><code><a title="odinson.ruleutils.config" href="config.html">odinson.ruleutils.config</a></code></li>
-<li><code><a title="odinson.ruleutils.info" href="info.html">odinson.ruleutils.info</a></code></li>
-<li><code><a title="odinson.ruleutils.oracle" href="oracle.html">odinson.ruleutils.oracle</a></code></li>
-<li><code><a title="odinson.ruleutils.queryast" href="queryast.html">odinson.ruleutils.queryast</a></code></li>
-<li><code><a title="odinson.ruleutils.queryparser" href="queryparser.html">odinson.ruleutils.queryparser</a></code></li>
-<li><code><a title="odinson.ruleutils.random" href="random.html">odinson.ruleutils.random</a></code></li>
+<li><code><a title="odinson.ruleutils" href="index.html">odinson.ruleutils</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="odinson.ruleutils.all_paths_from_root" href="#odinson.ruleutils.all_paths_from_root">all_paths_from_root</a></code></li>
-<li><code><a title="odinson.ruleutils.make_transition_table" href="#odinson.ruleutils.make_transition_table">make_transition_table</a></code></li>
-<li><code><a title="odinson.ruleutils.parse_odinson_query" href="#odinson.ruleutils.parse_odinson_query">parse_odinson_query</a></code></li>
-<li><code><a title="odinson.ruleutils.path_from_root" href="#odinson.ruleutils.path_from_root">path_from_root</a></code></li>
-<li><code><a title="odinson.ruleutils.random_hybrid" href="#odinson.ruleutils.random_hybrid">random_hybrid</a></code></li>
-<li><code><a title="odinson.ruleutils.random_query" href="#odinson.ruleutils.random_query">random_query</a></code></li>
-<li><code><a title="odinson.ruleutils.random_surface" href="#odinson.ruleutils.random_surface">random_surface</a></code></li>
-<li><code><a title="odinson.ruleutils.random_traversal" href="#odinson.ruleutils.random_traversal">random_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.random.random_hybrid" href="#odinson.ruleutils.random.random_hybrid">random_hybrid</a></code></li>
+<li><code><a title="odinson.ruleutils.random.random_query" href="#odinson.ruleutils.random.random_query">random_query</a></code></li>
+<li><code><a title="odinson.ruleutils.random.random_surface" href="#odinson.ruleutils.random.random_surface">random_surface</a></code></li>
+<li><code><a title="odinson.ruleutils.random.random_traversal" href="#odinson.ruleutils.random.random_traversal">random_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.random.random_tree" href="#odinson.ruleutils.random.random_tree">random_tree</a></code></li>
 </ul>
 </li>
 </ul>

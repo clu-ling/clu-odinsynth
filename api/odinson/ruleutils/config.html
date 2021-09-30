@@ -28,12 +28,16 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">import re
+from typing import Dict, List, Text
+
+# type alias
+Vocabularies = Dict[Text, List[Text]]
 
 SURFACE_HOLE_GLYPH = &#34;\u25a1&#34;  # WHITE SQUARE
 TRAVERSAL_HOLE_GLYPH = &#34;\u25b7&#34;  # WHITE RIGHT-POINTING TRIANGLE
 QUERY_HOLE_GLYPH = &#34;\u2344&#34;  # APL FUNCTIONAL SYMBOL QUAD GREATER-THAN
 
-IDENT_RE = re.compile(r&#34;^[a-zA-Z][a-zA-Z0-9_]*$&#34;)
+IDENT_RE = re.compile(r&#34;^[a-zA-Z_][a-zA-Z0-9_]*$&#34;)
 
 SYNTAX_FIELD = &#34;dependencies&#34;
 ENTITY_FIELD = &#34;entity&#34;

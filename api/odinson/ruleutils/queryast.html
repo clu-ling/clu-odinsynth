@@ -28,8 +28,6 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">from __future__ import annotations
-
-import re
 import json
 import itertools
 from typing import Dict, List, Optional, Text, Tuple, Type, Union
@@ -71,7 +69,7 @@ __all__ = [
 
 
 # type alias
-Vocabularies = Dict[Text, List[Text]]
+Vocabularies = config.Vocabularies
 
 
 class AstNode:
