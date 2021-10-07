@@ -267,7 +267,8 @@ class HoleMatcher(Matcher):
 
 class WildcardMatcher(Matcher):
     def __str__(self):
-        return "#"
+        # this should never be rendered
+        return "???"
 
 
 class ExactMatcher(Matcher):
@@ -296,7 +297,8 @@ class Constraint(AstNode):
 
 class WildcardConstraint(Constraint):
     def __str__(self):
-        return "#"
+        # this should never be rendered
+        return "???"
 
 
 class HoleConstraint(Constraint):
