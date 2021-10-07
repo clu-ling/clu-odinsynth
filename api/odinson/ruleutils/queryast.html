@@ -79,7 +79,7 @@ class AstNode:
     &#34;&#34;&#34;The base class for all AST nodes.&#34;&#34;&#34;
 
     def __repr__(self):
-        return f&#34;&lt;{self.__class__.__name__}: {self}&gt;&#34;
+        return f&#34;&lt;{self.__class__.__name__}: {str(self)!r}&gt;&#34;
 
     def __eq__(self, value):
         return self.id_tuple() == value.id_tuple()
@@ -159,6 +159,27 @@ class AstNode:
 
     def permutations(self) -&gt; List[AstNode]:
         &#34;&#34;&#34;Returns all trees that are equivalent to this AstNode.&#34;&#34;&#34;
+        return [self]
+
+    def over_approximation(self) -&gt; Optional[AstNode]:
+        &#34;&#34;&#34;Returns a rule with a language that contains all the languages
+        of the current node&#39;s descendents.&#34;&#34;&#34;
+        return self
+
+    def under_approximation(self) -&gt; Optional[AstNode]:
+        &#34;&#34;&#34;Returns a rule with a language that is subsumed by the languages
+        of all the descendents of the current node&#34;&#34;&#34;
+        return self
+
+    def redundancy_patterns(self) -&gt; List[AstNode]:
+        return [n.over_approximation() for n in set(self.unroll().split())]
+
+    def unroll(self) -&gt; AstNode:
+        &#34;&#34;&#34;unroll repetitions&#34;&#34;&#34;
+        return self
+
+    def split(self) -&gt; List[AstNode]:
+        &#34;&#34;&#34;decompose rule&#34;&#34;&#34;
         return [self]
 
 
@@ -268,6 +289,18 @@ class HoleMatcher(Matcher):
     def num_matcher_holes(self):
         return 1
 
+    def over_approximation(self):
+        return WildcardMatcher()
+
+    def under_approximation(self):
+        return None
+
+
+class WildcardMatcher(Matcher):
+    def __str__(self):
+        # this should never be rendered
+        return &#34;???&#34;
+
 
 class ExactMatcher(Matcher):
     def __init__(self, s: Text):
@@ -293,6 +326,12 @@ class Constraint(AstNode):
     &#34;&#34;&#34;The base class for all token constraints.&#34;&#34;&#34;
 
 
+class WildcardConstraint(Constraint):
+    def __str__(self):
+        # this should never be rendered
+        return &#34;???&#34;
+
+
 class HoleConstraint(Constraint):
     def __str__(self):
         return config.SURFACE_HOLE_GLYPH
@@ -310,6 +349,12 @@ class HoleConstraint(Constraint):
             AndConstraint(HoleConstraint(), HoleConstraint()),
             OrConstraint(HoleConstraint(), HoleConstraint()),
         ]
+
+    def over_approximation(self):
+        return WildcardConstraint()
+
+    def under_approximation(self):
+        return None
 
 
 class FieldConstraint(Constraint):
@@ -354,6 +399,32 @@ class FieldConstraint(Constraint):
             + self.value.preorder_traversal()
         )
 
+    def over_approximation(self):
+        name = self.name.over_approximation()
+        if name is None:
+            return None
+        if isinstance(name, WildcardMatcher):
+            return WildcardConstraint()
+        value = self.value.over_approximation()
+        if value is None:
+            return None
+        if isinstance(value, WildcardMatcher):
+            return WildcardConstraint()
+        return FieldConstraint(name, value)
+
+    def under_approximation(self):
+        name = self.name.under_approximation()
+        if name is None:
+            return None
+        if isinstance(name, WildcardMatcher):
+            return WildcardConstraint()
+        value = self.value.under_approximation()
+        if value is None:
+            return None
+        if isinstance(value, WildcardMatcher):
+            return WildcardConstraint()
+        return FieldConstraint(name, value)
+
 
 class NotConstraint(Constraint):
     def __init__(self, c: Constraint):
@@ -391,6 +462,22 @@ class NotConstraint(Constraint):
 
     def permutations(self):
         return [NotConstraint(p) for p in self.constraint.permutations()]
+
+    def over_approximation(self):
+        constraint = self.constraint.over_approximation()
+        if constraint is None:
+            return WildcardConstraint()
+        if isinstance(constraint, WildcardConstraint):
+            return None
+        return NotConstraint(constraint)
+
+    def under_approximation(self):
+        constraint = self.constraint.under_approximation()
+        if constraint is None:
+            return WildcardConstraint()
+        if isinstance(constraint, WildcardConstraint):
+            return None
+        return NotConstraint(constraint)
 
 
 class AndConstraint(Constraint):
@@ -440,6 +527,28 @@ class AndConstraint(Constraint):
     def permutations(self):
         return get_all_trees(self)
 
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None or rhs is None:
+            return None
+        if isinstance(lhs, WildcardConstraint):
+            return rhs
+        if isinstance(rhs, WildcardConstraint):
+            return lhs
+        return AndConstraint(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None or rhs is None:
+            return None
+        if isinstance(lhs, WildcardConstraint):
+            return rhs
+        if isinstance(rhs, WildcardConstraint):
+            return lhs
+        return AndConstraint(lhs, rhs)
+
 
 class OrConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
@@ -484,6 +593,31 @@ class OrConstraint(Constraint):
     def permutations(self):
         return get_all_trees(self)
 
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        if isinstance(lhs, WildcardConstraint) or isinstance(rhs, WildcardConstraint):
+            return WildcardConstraint()
+        return OrConstraint(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        if isinstance(lhs, WildcardConstraint) or isinstance(rhs, WildcardConstraint):
+            return WildcardConstraint()
+        return OrConstraint(lhs, rhs)
+
+    def split(self):
+        return self.lhs.split() + self.rhs.split()
+
 
 ####################
 # surface patterns
@@ -527,6 +661,12 @@ class HoleSurface(Surface):
             ]
         return candidates
 
+    def over_approximation(self):
+        return RepeatSurface(WildcardSurface(), 0, None)
+
+    def under_approximation(self):
+        return None
+
 
 class WildcardSurface(Surface):
     def __str__(self):
@@ -567,6 +707,28 @@ class TokenSurface(Surface):
 
     def permutations(self):
         return [TokenSurface(p) for p in self.constraint.permutations()]
+
+    def over_approximation(self):
+        constraint = self.constraint.over_approximation()
+        if constraint is None:
+            return None
+        if isinstance(constraint, WildcardConstraint):
+            return WildcardSurface()
+        return TokenSurface(constraint)
+
+    def under_approximation(self):
+        constraint = self.constraint.under_approximation()
+        if constraint is None:
+            return None
+        if isinstance(constraint, WildcardConstraint):
+            return WildcardSurface()
+        return TokenSurface(constraint)
+
+    def unroll(self):
+        return TokenSurface(self.constraint.unroll())
+
+    def split(self):
+        return [TokenSurface(c) for c in self.constraint.split()]
 
 
 class MentionSurface(Surface):
@@ -647,6 +809,35 @@ class ConcatSurface(Surface):
     def permutations(self):
         return get_all_trees(self)
 
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.over_approximation()
+        if rhs is None:
+            return None
+        return ConcatSurface(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.under_approximation()
+        if rhs is None:
+            return None
+        return ConcatSurface(lhs, rhs)
+
+    def unroll(self):
+        return ConcatSurface(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        results = []
+        for lhs in self.lhs.split():
+            results.append(ConcatSurface(lhs, self.rhs))
+        for rhs in self.rhs.split():
+            results.append(ConcatSurface(self.lhs, rhs))
+        return results
+
 
 class OrSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
@@ -694,6 +885,30 @@ class OrSurface(Surface):
     def permutations(self):
         return get_all_trees(self)
 
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrSurface(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrSurface(lhs, rhs)
+
+    def unroll(self):
+        return OrSurface(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        return self.lhs.split() + self.rhs.split()
+
 
 class RepeatSurface(Surface):
     def __init__(self, surf: Surface, min: int, max: Optional[int]):
@@ -739,6 +954,23 @@ class RepeatSurface(Surface):
     def permutations(self):
         return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]
 
+    def over_approximation(self):
+        surf = self.surf.over_approximation()
+        if surf is None:
+            return None
+        return RepeatSurface(surf, self.min, self.max)
+
+    def under_approximation(self):
+        surf = self.surf.under_approximation()
+        if surf is None:
+            return None
+        return RepeatSurface(surf, self.min, self.max)
+
+    def unroll(self):
+        if self.min &lt;= 1 and self.max is None:
+            return ConcatSurface(self.surf, ConcatSurface(self.surf, self))
+        return self
+
 
 ####################
 # traversal patterns
@@ -781,21 +1013,25 @@ class HoleTraversal(Traversal):
             ]
         return candidates
 
+    def over_approximation(self):
+        return RepeatTraversal(
+            OrTraversal(IncomingWildcardTraversal(), OutgoingWildcardTraversal()),
+            0,
+            None,
+        )
+
+    def under_approximation(self):
+        return None
+
 
 class IncomingWildcardTraversal(Traversal):
     def __str__(self):
         return &#34;&lt;&lt;&#34;
 
-    def tokens(self):
-        return [&#34;&lt;&lt;&#34;]
-
 
 class OutgoingWildcardTraversal(Traversal):
     def __str__(self):
         return &#34;&gt;&gt;&#34;
-
-    def tokens(self):
-        return [&#34;&gt;&gt;&#34;]
 
 
 class IncomingLabelTraversal(Traversal):
@@ -832,6 +1068,22 @@ class IncomingLabelTraversal(Traversal):
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()
 
+    def over_approximation(self):
+        label = self.label.over_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return IncomingWildcardTraversal()
+        return IncomingLabelTraversal(label)
+
+    def under_approximation(self):
+        label = self.label.under_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return IncomingWildcardTraversal()
+        return IncomingLabelTraversal(label)
+
 
 class OutgoingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
@@ -866,6 +1118,22 @@ class OutgoingLabelTraversal(Traversal):
 
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()
+
+    def over_approximation(self):
+        label = self.label.over_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return OutgoingWildcardTraversal()
+        return OutgoingLabelTraversal(label)
+
+    def under_approximation(self):
+        label = self.label.under_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return OutgoingWildcardTraversal()
+        return OutgoingLabelTraversal(label)
 
 
 class ConcatTraversal(Traversal):
@@ -916,6 +1184,35 @@ class ConcatTraversal(Traversal):
     def permutations(self):
         return get_all_trees(self)
 
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.over_approximation()
+        if rhs is None:
+            return None
+        return ConcatTraversal(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.under_approximation()
+        if rhs is None:
+            return None
+        return ConcatTraversal(lhs, rhs)
+
+    def unroll(self):
+        return ConcatTraversal(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        results = []
+        for lhs in self.lhs.split():
+            results.append(ConcatTraversal(lhs, self.rhs))
+        for rhs in self.rhs.split():
+            results.append(ConcatSurface(self.lhs, rhs))
+        return results
+
 
 class OrTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
@@ -959,6 +1256,30 @@ class OrTraversal(Traversal):
 
     def permutations(self):
         return get_all_trees(self)
+
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrTraversal(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrTraversal(lhs, rhs)
+
+    def unroll(self):
+        return OrTraversal(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        return self.lhs.split() + self.rhs.split()
 
 
 class RepeatTraversal(Traversal):
@@ -1004,6 +1325,25 @@ class RepeatTraversal(Traversal):
             for p in self.traversal.permutations()
         ]
 
+    def over_approximation(self):
+        traversal = self.traversal.over_approximation()
+        if traversal is None:
+            return None
+        return RepeatTraversal(traversal, self.min, self.max)
+
+    def under_approximation(self):
+        traversal = self.traversal.under_approximation()
+        if traversal is None:
+            return None
+        return RepeatTraversal(traversal, self.min, self.max)
+
+    def unroll(self):
+        if self.min &lt;= 1 and self.max is None:
+            return ConcatTraversal(
+                self.traversal, ConcatTraversal(self.traversal, self)
+            )
+        return self
+
 
 ####################
 # query
@@ -1029,6 +1369,12 @@ class HoleQuery(Query):
             HoleSurface(),
             HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
         ]
+
+    def over_approximation(self):
+        raise NotImplementedError()
+
+    def under_approximation(self):
+        raise NotImplementedError()
 
 
 class HybridQuery(Query):
@@ -1119,7 +1465,48 @@ class HybridQuery(Query):
             for src in self.src.permutations()
             for traversal in self.traversal.permutations()
             for dst in self.dst.permutations()
-        ]</code></pre>
+        ]
+
+    def over_approximation(self):
+        src = self.src.over_approximation()
+        if src is None:
+            return None
+        traversal = self.traversal.over_approximation()
+        if traversal is None:
+            return None
+        dst = self.dst.over_approximation()
+        if dst is None:
+            return None
+        return HybridQuery(src, traversal, dst)
+
+    def under_approximation(self):
+        src = self.src.under_approximation()
+        if src is None:
+            return None
+        traversal = self.traversal.under_approximation()
+        if traversal is None:
+            return None
+        dst = self.dst.under_approximation()
+        if dst is None:
+            return None
+        return HybridQuery(src, traversal, dst)
+
+    def unroll(self):
+        return HybridQuery(
+            self.src.unroll(),
+            self.traversal.unroll(),
+            self.dst.unroll(),
+        )
+
+    def split(self):
+        results = []
+        for src in self.src.split():
+            results.append(HybridQuery(src, self.traversal, self.dst))
+        for traversal in self.traversal.split():
+            results.append(HybridQuery(self.src, traversal, self.dst))
+        for dst in self.dst.split():
+            results.append(HybridQuery(self.src, self.traversal, dst))
+        return results</code></pre>
 </details>
 </section>
 <section>
@@ -1186,7 +1573,29 @@ class HybridQuery(Query):
         )
 
     def permutations(self):
-        return get_all_trees(self)</code></pre>
+        return get_all_trees(self)
+
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None or rhs is None:
+            return None
+        if isinstance(lhs, WildcardConstraint):
+            return rhs
+        if isinstance(rhs, WildcardConstraint):
+            return lhs
+        return AndConstraint(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None or rhs is None:
+            return None
+        if isinstance(lhs, WildcardConstraint):
+            return rhs
+        if isinstance(rhs, WildcardConstraint):
+            return lhs
+        return AndConstraint(lhs, rhs)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -1223,9 +1632,13 @@ class HybridQuery(Query):
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -1243,7 +1656,7 @@ class HybridQuery(Query):
     &#34;&#34;&#34;The base class for all AST nodes.&#34;&#34;&#34;
 
     def __repr__(self):
-        return f&#34;&lt;{self.__class__.__name__}: {self}&gt;&#34;
+        return f&#34;&lt;{self.__class__.__name__}: {str(self)!r}&gt;&#34;
 
     def __eq__(self, value):
         return self.id_tuple() == value.id_tuple()
@@ -1323,6 +1736,27 @@ class HybridQuery(Query):
 
     def permutations(self) -&gt; List[AstNode]:
         &#34;&#34;&#34;Returns all trees that are equivalent to this AstNode.&#34;&#34;&#34;
+        return [self]
+
+    def over_approximation(self) -&gt; Optional[AstNode]:
+        &#34;&#34;&#34;Returns a rule with a language that contains all the languages
+        of the current node&#39;s descendents.&#34;&#34;&#34;
+        return self
+
+    def under_approximation(self) -&gt; Optional[AstNode]:
+        &#34;&#34;&#34;Returns a rule with a language that is subsumed by the languages
+        of all the descendents of the current node&#34;&#34;&#34;
+        return self
+
+    def redundancy_patterns(self) -&gt; List[AstNode]:
+        return [n.over_approximation() for n in set(self.unroll().split())]
+
+    def unroll(self) -&gt; AstNode:
+        &#34;&#34;&#34;unroll repetitions&#34;&#34;&#34;
+        return self
+
+    def split(self) -&gt; List[AstNode]:
+        &#34;&#34;&#34;decompose rule&#34;&#34;&#34;
         return [self]</code></pre>
 </details>
 <h3>Subclasses</h3>
@@ -1508,6 +1942,22 @@ returns an empty list.</p></div>
     return 0</code></pre>
 </details>
 </dd>
+<dt id="odinson.ruleutils.queryast.AstNode.over_approximation"><code class="name flex">
+<span>def <span class="ident">over_approximation</span></span>(<span>self) ‑> Union[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>, NoneType]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a rule with a language that contains all the languages
+of the current node's descendents.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def over_approximation(self) -&gt; Optional[AstNode]:
+    &#34;&#34;&#34;Returns a rule with a language that contains all the languages
+    of the current node&#39;s descendents.&#34;&#34;&#34;
+    return self</code></pre>
+</details>
+</dd>
 <dt id="odinson.ruleutils.queryast.AstNode.permutations"><code class="name flex">
 <span>def <span class="ident">permutations</span></span>(<span>self) ‑> List[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
 </code></dt>
@@ -1537,6 +1987,33 @@ returns an empty list.</p></div>
     return [self]</code></pre>
 </details>
 </dd>
+<dt id="odinson.ruleutils.queryast.AstNode.redundancy_patterns"><code class="name flex">
+<span>def <span class="ident">redundancy_patterns</span></span>(<span>self) ‑> List[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def redundancy_patterns(self) -&gt; List[AstNode]:
+    return [n.over_approximation() for n in set(self.unroll().split())]</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.split"><code class="name flex">
+<span>def <span class="ident">split</span></span>(<span>self) ‑> List[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>decompose rule</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def split(self) -&gt; List[AstNode]:
+    &#34;&#34;&#34;decompose rule&#34;&#34;&#34;
+    return [self]</code></pre>
+</details>
+</dd>
 <dt id="odinson.ruleutils.queryast.AstNode.tokens"><code class="name flex">
 <span>def <span class="ident">tokens</span></span>(<span>self) ‑> List[str]</span>
 </code></dt>
@@ -1550,6 +2027,36 @@ returns an empty list.</p></div>
     &#34;&#34;&#34;Returns the pattern as a list of tokens.&#34;&#34;&#34;
     # default implementation is intended for nodes that have no children
     return [Text(self)]</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.under_approximation"><code class="name flex">
+<span>def <span class="ident">under_approximation</span></span>(<span>self) ‑> Union[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>, NoneType]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a rule with a language that is subsumed by the languages
+of all the descendents of the current node</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def under_approximation(self) -&gt; Optional[AstNode]:
+    &#34;&#34;&#34;Returns a rule with a language that is subsumed by the languages
+    of all the descendents of the current node&#34;&#34;&#34;
+    return self</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.unroll"><code class="name flex">
+<span>def <span class="ident">unroll</span></span>(<span>self) ‑> <a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>unroll repetitions</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def unroll(self) -&gt; AstNode:
+    &#34;&#34;&#34;unroll repetitions&#34;&#34;&#34;
+    return self</code></pre>
 </details>
 </dd>
 </dl>
@@ -1613,7 +2120,36 @@ returns an empty list.</p></div>
         )
 
     def permutations(self):
-        return get_all_trees(self)</code></pre>
+        return get_all_trees(self)
+
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.over_approximation()
+        if rhs is None:
+            return None
+        return ConcatSurface(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.under_approximation()
+        if rhs is None:
+            return None
+        return ConcatSurface(lhs, rhs)
+
+    def unroll(self):
+        return ConcatSurface(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        results = []
+        for lhs in self.lhs.split():
+            results.append(ConcatSurface(lhs, self.rhs))
+        for rhs in self.rhs.split():
+            results.append(ConcatSurface(self.lhs, rhs))
+        return results</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -1650,9 +2186,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -1713,7 +2253,36 @@ returns an empty list.</p></div>
         )
 
     def permutations(self):
-        return get_all_trees(self)</code></pre>
+        return get_all_trees(self)
+
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.over_approximation()
+        if rhs is None:
+            return None
+        return ConcatTraversal(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        if lhs is None:
+            return None
+        rhs = self.rhs.under_approximation()
+        if rhs is None:
+            return None
+        return ConcatTraversal(lhs, rhs)
+
+    def unroll(self):
+        return ConcatTraversal(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        results = []
+        for lhs in self.lhs.split():
+            results.append(ConcatTraversal(lhs, self.rhs))
+        for rhs in self.rhs.split():
+            results.append(ConcatSurface(self.lhs, rhs))
+        return results</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -1750,9 +2319,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -1780,6 +2353,7 @@ returns an empty list.</p></div>
 <li><a title="odinson.ruleutils.queryast.HoleConstraint" href="#odinson.ruleutils.queryast.HoleConstraint">HoleConstraint</a></li>
 <li><a title="odinson.ruleutils.queryast.NotConstraint" href="#odinson.ruleutils.queryast.NotConstraint">NotConstraint</a></li>
 <li><a title="odinson.ruleutils.queryast.OrConstraint" href="#odinson.ruleutils.queryast.OrConstraint">OrConstraint</a></li>
+<li>odinson.ruleutils.queryast.WildcardConstraint</li>
 </ul>
 <h3>Inherited members</h3>
 <ul class="hlist">
@@ -1795,9 +2369,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -1861,9 +2439,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -1918,7 +2500,33 @@ returns an empty list.</p></div>
             super().preorder_traversal()
             + self.name.preorder_traversal()
             + self.value.preorder_traversal()
-        )</code></pre>
+        )
+
+    def over_approximation(self):
+        name = self.name.over_approximation()
+        if name is None:
+            return None
+        if isinstance(name, WildcardMatcher):
+            return WildcardConstraint()
+        value = self.value.over_approximation()
+        if value is None:
+            return None
+        if isinstance(value, WildcardMatcher):
+            return WildcardConstraint()
+        return FieldConstraint(name, value)
+
+    def under_approximation(self):
+        name = self.name.under_approximation()
+        if name is None:
+            return None
+        if isinstance(name, WildcardMatcher):
+            return WildcardConstraint()
+        value = self.value.under_approximation()
+        if value is None:
+            return None
+        if isinstance(value, WildcardMatcher):
+            return WildcardConstraint()
+        return FieldConstraint(name, value)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -1955,9 +2563,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -1987,7 +2599,13 @@ returns an empty list.</p></div>
             NotConstraint(HoleConstraint()),
             AndConstraint(HoleConstraint(), HoleConstraint()),
             OrConstraint(HoleConstraint(), HoleConstraint()),
-        ]</code></pre>
+        ]
+
+    def over_approximation(self):
+        return WildcardConstraint()
+
+    def under_approximation(self):
+        return None</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2008,9 +2626,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2032,7 +2654,13 @@ returns an empty list.</p></div>
         return True
 
     def num_matcher_holes(self):
-        return 1</code></pre>
+        return 1
+
+    def over_approximation(self):
+        return WildcardMatcher()
+
+    def under_approximation(self):
+        return None</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2053,9 +2681,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Matcher.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Matcher.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2083,7 +2715,13 @@ returns an empty list.</p></div>
         return [
             HoleSurface(),
             HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
-        ]</code></pre>
+        ]
+
+    def over_approximation(self):
+        raise NotImplementedError()
+
+    def under_approximation(self):
+        raise NotImplementedError()</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2104,9 +2742,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Query.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Query.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Query.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Query.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Query.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Query.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Query.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Query.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Query.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Query.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2151,7 +2793,13 @@ returns an empty list.</p></div>
                 RepeatSurface(HoleSurface(), 0, None),
                 RepeatSurface(HoleSurface(), 1, None),
             ]
-        return candidates</code></pre>
+        return candidates
+
+    def over_approximation(self):
+        return RepeatSurface(WildcardSurface(), 0, None)
+
+    def under_approximation(self):
+        return None</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2172,9 +2820,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2218,7 +2870,17 @@ returns an empty list.</p></div>
                 RepeatTraversal(HoleTraversal(), 0, None),
                 RepeatTraversal(HoleTraversal(), 1, None),
             ]
-        return candidates</code></pre>
+        return candidates
+
+    def over_approximation(self):
+        return RepeatTraversal(
+            OrTraversal(IncomingWildcardTraversal(), OutgoingWildcardTraversal()),
+            0,
+            None,
+        )
+
+    def under_approximation(self):
+        return None</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2239,9 +2901,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2344,7 +3010,48 @@ returns an empty list.</p></div>
             for src in self.src.permutations()
             for traversal in self.traversal.permutations()
             for dst in self.dst.permutations()
-        ]</code></pre>
+        ]
+
+    def over_approximation(self):
+        src = self.src.over_approximation()
+        if src is None:
+            return None
+        traversal = self.traversal.over_approximation()
+        if traversal is None:
+            return None
+        dst = self.dst.over_approximation()
+        if dst is None:
+            return None
+        return HybridQuery(src, traversal, dst)
+
+    def under_approximation(self):
+        src = self.src.under_approximation()
+        if src is None:
+            return None
+        traversal = self.traversal.under_approximation()
+        if traversal is None:
+            return None
+        dst = self.dst.under_approximation()
+        if dst is None:
+            return None
+        return HybridQuery(src, traversal, dst)
+
+    def unroll(self):
+        return HybridQuery(
+            self.src.unroll(),
+            self.traversal.unroll(),
+            self.dst.unroll(),
+        )
+
+    def split(self):
+        results = []
+        for src in self.src.split():
+            results.append(HybridQuery(src, self.traversal, self.dst))
+        for traversal in self.traversal.split():
+            results.append(HybridQuery(self.src, traversal, self.dst))
+        for dst in self.dst.split():
+            results.append(HybridQuery(self.src, self.traversal, dst))
+        return results</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2381,9 +3088,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Query.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Query.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Query.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Query.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Query.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Query.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Query.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Query.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Query.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Query.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2430,7 +3141,23 @@ returns an empty list.</p></div>
             return []
 
     def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()</code></pre>
+        return super().preorder_traversal() + self.label.preorder_traversal()
+
+    def over_approximation(self):
+        label = self.label.over_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return IncomingWildcardTraversal()
+        return IncomingLabelTraversal(label)
+
+    def under_approximation(self):
+        label = self.label.under_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return IncomingWildcardTraversal()
+        return IncomingLabelTraversal(label)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2467,9 +3194,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2485,10 +3216,7 @@ returns an empty list.</p></div>
 </summary>
 <pre><code class="python">class IncomingWildcardTraversal(Traversal):
     def __str__(self):
-        return &#34;&lt;&lt;&#34;
-
-    def tokens(self):
-        return [&#34;&lt;&lt;&#34;]</code></pre>
+        return &#34;&lt;&lt;&#34;</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2509,9 +3237,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2536,6 +3268,7 @@ returns an empty list.</p></div>
 <ul class="hlist">
 <li><a title="odinson.ruleutils.queryast.ExactMatcher" href="#odinson.ruleutils.queryast.ExactMatcher">ExactMatcher</a></li>
 <li><a title="odinson.ruleutils.queryast.HoleMatcher" href="#odinson.ruleutils.queryast.HoleMatcher">HoleMatcher</a></li>
+<li>odinson.ruleutils.queryast.WildcardMatcher</li>
 </ul>
 <h3>Inherited members</h3>
 <ul class="hlist">
@@ -2551,9 +3284,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2629,9 +3366,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2681,7 +3422,23 @@ returns an empty list.</p></div>
         return super().preorder_traversal() + self.constraint.preorder_traversal()
 
     def permutations(self):
-        return [NotConstraint(p) for p in self.constraint.permutations()]</code></pre>
+        return [NotConstraint(p) for p in self.constraint.permutations()]
+
+    def over_approximation(self):
+        constraint = self.constraint.over_approximation()
+        if constraint is None:
+            return WildcardConstraint()
+        if isinstance(constraint, WildcardConstraint):
+            return None
+        return NotConstraint(constraint)
+
+    def under_approximation(self):
+        constraint = self.constraint.under_approximation()
+        if constraint is None:
+            return WildcardConstraint()
+        if isinstance(constraint, WildcardConstraint):
+            return None
+        return NotConstraint(constraint)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2718,9 +3475,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2776,7 +3537,32 @@ returns an empty list.</p></div>
         )
 
     def permutations(self):
-        return get_all_trees(self)</code></pre>
+        return get_all_trees(self)
+
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        if isinstance(lhs, WildcardConstraint) or isinstance(rhs, WildcardConstraint):
+            return WildcardConstraint()
+        return OrConstraint(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        if isinstance(lhs, WildcardConstraint) or isinstance(rhs, WildcardConstraint):
+            return WildcardConstraint()
+        return OrConstraint(lhs, rhs)
+
+    def split(self):
+        return self.lhs.split() + self.rhs.split()</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2813,9 +3599,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2874,7 +3664,31 @@ returns an empty list.</p></div>
         )
 
     def permutations(self):
-        return get_all_trees(self)</code></pre>
+        return get_all_trees(self)
+
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrSurface(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrSurface(lhs, rhs)
+
+    def unroll(self):
+        return OrSurface(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        return self.lhs.split() + self.rhs.split()</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -2911,9 +3725,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -2969,7 +3787,31 @@ returns an empty list.</p></div>
         )
 
     def permutations(self):
-        return get_all_trees(self)</code></pre>
+        return get_all_trees(self)
+
+    def over_approximation(self):
+        lhs = self.lhs.over_approximation()
+        rhs = self.rhs.over_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrTraversal(lhs, rhs)
+
+    def under_approximation(self):
+        lhs = self.lhs.under_approximation()
+        rhs = self.rhs.under_approximation()
+        if lhs is None:
+            return rhs
+        if rhs is None:
+            return lhs
+        return OrTraversal(lhs, rhs)
+
+    def unroll(self):
+        return OrTraversal(self.lhs.unroll(), self.rhs.unroll())
+
+    def split(self):
+        return self.lhs.split() + self.rhs.split()</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -3006,9 +3848,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3055,7 +3901,23 @@ returns an empty list.</p></div>
             return []
 
     def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()</code></pre>
+        return super().preorder_traversal() + self.label.preorder_traversal()
+
+    def over_approximation(self):
+        label = self.label.over_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return OutgoingWildcardTraversal()
+        return OutgoingLabelTraversal(label)
+
+    def under_approximation(self):
+        label = self.label.under_approximation()
+        if label is None:
+            return None
+        if isinstance(label, WildcardMatcher):
+            return OutgoingWildcardTraversal()
+        return OutgoingLabelTraversal(label)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -3092,9 +3954,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3110,10 +3976,7 @@ returns an empty list.</p></div>
 </summary>
 <pre><code class="python">class OutgoingWildcardTraversal(Traversal):
     def __str__(self):
-        return &#34;&gt;&gt;&#34;
-
-    def tokens(self):
-        return [&#34;&gt;&gt;&#34;]</code></pre>
+        return &#34;&gt;&gt;&#34;</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -3134,9 +3997,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3176,9 +4043,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3235,7 +4106,24 @@ returns an empty list.</p></div>
         return super().preorder_traversal() + self.surf.preorder_traversal()
 
     def permutations(self):
-        return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]</code></pre>
+        return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]
+
+    def over_approximation(self):
+        surf = self.surf.over_approximation()
+        if surf is None:
+            return None
+        return RepeatSurface(surf, self.min, self.max)
+
+    def under_approximation(self):
+        surf = self.surf.under_approximation()
+        if surf is None:
+            return None
+        return RepeatSurface(surf, self.min, self.max)
+
+    def unroll(self):
+        if self.min &lt;= 1 and self.max is None:
+            return ConcatSurface(self.surf, ConcatSurface(self.surf, self))
+        return self</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -3272,9 +4160,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3330,7 +4222,26 @@ returns an empty list.</p></div>
         return [
             RepeatTraversal(p, self.min, self.max)
             for p in self.traversal.permutations()
-        ]</code></pre>
+        ]
+
+    def over_approximation(self):
+        traversal = self.traversal.over_approximation()
+        if traversal is None:
+            return None
+        return RepeatTraversal(traversal, self.min, self.max)
+
+    def under_approximation(self):
+        traversal = self.traversal.under_approximation()
+        if traversal is None:
+            return None
+        return RepeatTraversal(traversal, self.min, self.max)
+
+    def unroll(self):
+        if self.min &lt;= 1 and self.max is None:
+            return ConcatTraversal(
+                self.traversal, ConcatTraversal(self.traversal, self)
+            )
+        return self</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -3367,9 +4278,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Traversal.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Traversal.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3414,9 +4329,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3461,7 +4380,29 @@ returns an empty list.</p></div>
         return super().preorder_traversal() + self.constraint.preorder_traversal()
 
     def permutations(self):
-        return [TokenSurface(p) for p in self.constraint.permutations()]</code></pre>
+        return [TokenSurface(p) for p in self.constraint.permutations()]
+
+    def over_approximation(self):
+        constraint = self.constraint.over_approximation()
+        if constraint is None:
+            return None
+        if isinstance(constraint, WildcardConstraint):
+            return WildcardSurface()
+        return TokenSurface(constraint)
+
+    def under_approximation(self):
+        constraint = self.constraint.under_approximation()
+        if constraint is None:
+            return None
+        if isinstance(constraint, WildcardConstraint):
+            return WildcardSurface()
+        return TokenSurface(constraint)
+
+    def unroll(self):
+        return TokenSurface(self.constraint.unroll())
+
+    def split(self):
+        return [TokenSurface(c) for c in self.constraint.split()]</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -3498,9 +4439,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3546,9 +4491,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3588,9 +4537,13 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.Surface.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Surface.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 </ul>
@@ -3631,9 +4584,14 @@ returns an empty list.</p></div>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.redundancy_patterns" href="#odinson.ruleutils.queryast.AstNode.redundancy_patterns">redundancy_patterns</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
 </ul>
 </li>
 <li>
