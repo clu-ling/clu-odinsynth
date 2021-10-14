@@ -42,8 +42,30 @@ __all__ = [
     "HybridQuery",
 ]
 
+
 # type alias
 Vocabularies = config.Vocabularies
+
+
+class CognitiveWeight:
+    FIELD_CONSTRAINT = 1
+    NOT_CONSTRAINT = 2
+    AND_CONSTRAINT = 3
+    OR_CONSTRAINT = 4
+    WILDCARD_SURFACE = 1
+    TOKEN_SURFACE = 1
+    MENTION_SURFACE = 1
+    CONCAT_SURFACE = 3
+    OR_SURFACE = 4
+    REPEAT_SURFACE = 5
+    INCOMING_WILDCARD_TRAVERSAL = 1
+    OUTGOING_WILDCARD_TRAVERSAL = 1
+    INCOMING_LABEL_TRAVERSAL = 1
+    OUTGOING_LABEL_TRAVERSAL = 1
+    CONCAT_TRAVERSAL = 3
+    OR_TRAVERSAL = 4
+    REPEAT_TRAVERSAL = 5
+    HYBRID_QUERY = 2
 
 
 class AstNode:
@@ -152,6 +174,9 @@ class AstNode:
     def split(self) -> List[AstNode]:
         """decompose rule"""
         return [self]
+
+    def cognitive_weight(self) -> int:
+        return 0
 
 
 # type alias
@@ -396,6 +421,9 @@ class FieldConstraint(Constraint):
             return WildcardConstraint()
         return FieldConstraint(name, value)
 
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.FIELD_CONSTRAINT
+
 
 class NotConstraint(Constraint):
     def __init__(self, c: Constraint):
@@ -449,6 +477,9 @@ class NotConstraint(Constraint):
         if isinstance(constraint, WildcardConstraint):
             return None
         return NotConstraint(constraint)
+
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.NOT_CONSTRAINT + self.constraint.cognitive_weight()
 
 
 class AndConstraint(Constraint):
@@ -520,6 +551,13 @@ class AndConstraint(Constraint):
             return lhs
         return AndConstraint(lhs, rhs)
 
+    def cognitive_weight(self) -> int:
+        return (
+            CognitiveWeight.AND_CONSTRAINT
+            + self.lhs.cognitive_weight()
+            + self.rhs.cognitive_weight()
+        )
+
 
 class OrConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
@@ -589,6 +627,13 @@ class OrConstraint(Constraint):
     def split(self):
         return self.lhs.split() + self.rhs.split()
 
+    def cognitive_weight(self) -> int:
+        return (
+            CognitiveWeight.OR_CONSTRAINT
+            + self.lhs.cognitive_weight()
+            + self.rhs.cognitive_weight()
+        )
+
 
 ####################
 # surface patterns
@@ -646,6 +691,9 @@ class WildcardSurface(Surface):
     def tokens(self):
         return ["[", "]"]
 
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.WILDCARD_SURFACE
+
 
 class TokenSurface(Surface):
     def __init__(self, c: Constraint):
@@ -701,6 +749,9 @@ class TokenSurface(Surface):
     def split(self):
         return [TokenSurface(c) for c in self.constraint.split()]
 
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.TOKEN_SURFACE + self.constraint.cognitive_weight()
+
 
 class MentionSurface(Surface):
     def __init__(self, label: Matcher):
@@ -727,6 +778,9 @@ class MentionSurface(Surface):
 
     def preorder_traversal(self):
         return super().preorder_traversal() + self.label.preorder_traversal()
+
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.MENTION_SURFACE
 
 
 class ConcatSurface(Surface):
@@ -809,6 +863,13 @@ class ConcatSurface(Surface):
             results.append(ConcatSurface(self.lhs, rhs))
         return results
 
+    def cognitive_weight(self) -> int:
+        return (
+            CognitiveWeight.CONCAT_SURFACE
+            + self.lhs.cognitive_weight()
+            + self.rhs.cognitive_weight()
+        )
+
 
 class OrSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
@@ -880,6 +941,13 @@ class OrSurface(Surface):
     def split(self):
         return self.lhs.split() + self.rhs.split()
 
+    def cognitive_weight(self) -> int:
+        return (
+            CognitiveWeight.OR_SURFACE
+            + self.lhs.cognitive_weight()
+            + self.rhs.cognitive_weight()
+        )
+
 
 class RepeatSurface(Surface):
     def __init__(self, surf: Surface, min: int, max: Optional[int]):
@@ -942,6 +1010,9 @@ class RepeatSurface(Surface):
             return ConcatSurface(self.surf, ConcatSurface(self.surf, self))
         return self
 
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.REPEAT_SURFACE + self.surf.cognitive_weight()
+
 
 ####################
 # traversal patterns
@@ -999,10 +1070,16 @@ class IncomingWildcardTraversal(Traversal):
     def __str__(self):
         return "<<"
 
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.INCOMING_WILDCARD_TRAVERSAL
+
 
 class OutgoingWildcardTraversal(Traversal):
     def __str__(self):
         return ">>"
+
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.OUTGOING_WILDCARD_TRAVERSAL
 
 
 class IncomingLabelTraversal(Traversal):
@@ -1055,6 +1132,9 @@ class IncomingLabelTraversal(Traversal):
             return IncomingWildcardTraversal()
         return IncomingLabelTraversal(label)
 
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.INCOMING_LABEL_TRAVERSAL
+
 
 class OutgoingLabelTraversal(Traversal):
     def __init__(self, label: Matcher):
@@ -1105,6 +1185,9 @@ class OutgoingLabelTraversal(Traversal):
         if isinstance(label, WildcardMatcher):
             return OutgoingWildcardTraversal()
         return OutgoingLabelTraversal(label)
+
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.OUTGOING_LABEL_TRAVERSAL
 
 
 class ConcatTraversal(Traversal):
@@ -1184,6 +1267,13 @@ class ConcatTraversal(Traversal):
             results.append(ConcatSurface(self.lhs, rhs))
         return results
 
+    def cognitive_weight(self) -> int:
+        return (
+            CognitiveWeight.CONCAT_TRAVERSAL
+            + self.lhs.cognitive_weight()
+            + self.rhs.cognitive_weight()
+        )
+
 
 class OrTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
@@ -1252,6 +1342,13 @@ class OrTraversal(Traversal):
     def split(self):
         return self.lhs.split() + self.rhs.split()
 
+    def cognitive_weight(self) -> int:
+        return (
+            CognitiveWeight.OR_TRAVERSAL
+            + self.lhs.cognitive_weight()
+            + self.rhs.cognitive_weight()
+        )
+
 
 class RepeatTraversal(Traversal):
     def __init__(self, traversal: Traversal, min: int, max: Optional[int]):
@@ -1314,6 +1411,9 @@ class RepeatTraversal(Traversal):
                 self.traversal, ConcatTraversal(self.traversal, self)
             )
         return self
+
+    def cognitive_weight(self) -> int:
+        return CognitiveWeight.REPEAT_TRAVERSAL + self.traversal.cognitive_weight()
 
 
 ####################
@@ -1478,3 +1578,11 @@ class HybridQuery(Query):
         for dst in self.dst.split():
             results.append(HybridQuery(self.src, self.traversal, dst))
         return results
+
+    def cognitive_weight(self) -> int:
+        return (
+            CognitiveWeight.HYBRID_QUERY
+            + self.src.cognitive_weight()
+            + self.dst.cognitive_weight()
+            + self.traversal.cognitive_weight()
+        )
