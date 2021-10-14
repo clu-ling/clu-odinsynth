@@ -261,9 +261,8 @@ class AstNode:
         n_out = self.number_outgoings()
         return n_in / (n_in + n_out)
 
-    # TODO number of quantifiers
-    # TODO proportion of quantifiers to total of operators
-    # TODO proportion of operators to operands
+    def num_quantifiers(self):
+        return sum(c.num_quantifiers() for c in self.children())
 
     def num_nodes(self) -> int:
         return 1 + sum(c.num_nodes() for c in self.children())
@@ -962,6 +961,9 @@ class RepeatSurface(Surface):
             return ConcatSurface(self.surf, ConcatSurface(self.surf, self))
         return self
 
+    def num_quantifiers(self):
+        return 1 + self.surf.num_quantifiers()
+
 
 ####################
 # traversal patterns
@@ -1283,6 +1285,9 @@ class RepeatTraversal(Traversal):
                 self.traversal, ConcatTraversal(self.traversal, self)
             )
         return self
+
+    def num_quantifiers(self):
+        return 1 + self.traversal.num_quantifiers()
 
 
 ####################
