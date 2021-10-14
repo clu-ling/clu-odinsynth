@@ -239,6 +239,27 @@ class AstNode:
         x = 2 + self.num_distinct_operands()
         return x * math.log(x, 2)
 
+    def program_level(self) -> float:
+        return self.potential_volume() / self.program_volume()
+
+    def effort(self) -> float:
+        return self.program_volume() / self.program_level()
+        
+    def number_incomings(self) -> int:
+        return len(t for t in self.tokens() if t.startswith("<"))
+
+    def number_outgoings(self) -> int:
+        return len(t for t in self.tokens() if t.startswith(">"))
+
+    def proportion_incoming(self) -> float:
+        n_in = self.number_incomings()
+        n_out = self.number_outgoings()
+        return n_in / (n_in + n_out)
+
+    # TODO number of quantifiers
+    # TODO proportion of quantifiers to total of operators
+    # TODO proportion of operators to operands
+
 
 # type alias
 Types = Type[Union[AstNode, Tuple[AstNode]]]
