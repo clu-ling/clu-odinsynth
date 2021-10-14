@@ -47,6 +47,29 @@ __all__ = [
 Vocabularies = config.Vocabularies
 
 
+OPERATORS_TO_EXCLUDE = {"]", ")", "}"}
+
+
+OPERATORS = {
+    "[",
+    "(",
+    "{",
+    "?",
+    "*",
+    "+",
+    "=",
+    "!",
+    "&",
+    "|",
+    ",",
+    "@",
+    "<",
+    ">",
+    ">>",
+    "<<",
+}
+
+
 class CognitiveWeight:
     FIELD_CONSTRAINT = 1
     NOT_CONSTRAINT = 2
@@ -177,6 +200,24 @@ class AstNode:
 
     def cognitive_weight(self) -> int:
         return 0
+
+    def operators(self) -> list[str]:
+        return [t for t in self.tokens() if t in OPERATORS]
+
+    def operands(self) -> list[str]:
+        return [t for t in self.tokens() if t not in OPERATORS and t not in OPERATORS_TO_EXCLUDE]
+
+    def num_operators(self) -> int:
+        return len(self.operators())
+
+    def num_distinct_operators(self) -> int:
+        return len(set(self.operators()))
+
+    def num_operands(self) -> int:
+        return len(self.operands())
+
+    def num_distinct_operands(self) -> int:
+        return len(set(self.operands()))
 
 
 # type alias
