@@ -104,8 +104,11 @@ class AstNode:
     def __hash__(self):
         return hash(self.id_tuple())
 
+    def children(self):
+        return []
+
     def id_tuple(self):
-        return (type(self),)
+        return (type(self), *self.children())
 
     def is_hole(self) -> bool:
         """Returns true if the node is a hole."""
@@ -117,7 +120,7 @@ class AstNode:
         """Returns true if the pattern has one or more holes."""
         # most nodes need to override this to handle their children,
         # so the default implementation is intended for Hole* nodes
-        return self.is_hole()
+        return self.is_hole() or any(c.has_holes() for c in self.children())
 
     def is_valid(self) -> bool:
         """Returns true if the pattern is valid, i.e., has no holes."""
@@ -130,23 +133,23 @@ class AstNode:
 
     def num_matcher_holes(self) -> int:
         """Returns the number of matcher holes in this pattern."""
-        return 0
+        return sum(c.num_matcher_holes() for c in self.children())
 
     def num_constraint_holes(self) -> int:
         """Returns the number of constraint holes in this pattern."""
-        return 0
+        return sum(c.num_constraint_holes() for c in self.children())
 
     def num_surface_holes(self) -> int:
         """Returns the number of surface holes in this pattern."""
-        return 0
+        return sum(c.num_surface_holes() for c in self.children())
 
     def num_traversal_holes(self) -> int:
         """Returns the number of traversal holes in this pattern."""
-        return 0
+        return sum(c.num_traversal_holes() for c in self.children())
 
     def num_query_holes(self) -> int:
         """Returns the number of traversal holes in this pattern."""
-        return 0
+        return sum(c.num_query_holes() for c in self.children())
 
     def num_holes(self) -> int:
         """Returns the number of holes in this pattern."""
@@ -259,6 +262,22 @@ class AstNode:
     # TODO number of quantifiers
     # TODO proportion of quantifiers to total of operators
     # TODO proportion of operators to operands
+
+    def num_nodes(self) -> int:
+        return 1 + sum(c.num_nodes() for c in self.children())
+
+    def num_leaves(self) -> int:
+        return 1
+
+    def tree_height(self, func):
+        heights = [c.tree_height(func) for c in self.children()]
+        return 1 + func(*heights)
+
+    def max_tree_height(self) -> int:
+        return self.tree_height(max)
+
+    def min_tree_height(self) -> int:
+        return self.tree_height(min)
 
 
 # type alias
@@ -443,17 +462,11 @@ class FieldConstraint(Constraint):
     def __str__(self):
         return f"{self.name}={self.value}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.name, self.value)
-
-    def has_holes(self):
-        return self.name.has_holes() or self.value.has_holes()
+    def children(self):
+        return [self.name, self.value]
 
     def tokens(self):
         return self.name.tokens() + ["="] + self.value.tokens()
-
-    def num_matcher_holes(self):
-        return self.name.num_matcher_holes() + self.value.num_matcher_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.name.is_hole():
@@ -515,22 +528,13 @@ class NotConstraint(Constraint):
         c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
         return f"!{c}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.constraint,)
-
-    def has_holes(self):
-        return self.constraint.has_holes()
+    def children(self):
+        return [self.constraint]
 
     def tokens(self):
         return ["!"] + maybe_parens_tokens(
             self.constraint, (AndConstraint, OrConstraint)
         )
-
-    def num_matcher_holes(self):
-        return self.constraint.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.constraint.num_constraint_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         # get the next nodes for the nested constraint
@@ -572,11 +576,8 @@ class AndConstraint(Constraint):
     def __str__(self):
         return f"{self.lhs} & {self.rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
@@ -584,12 +585,6 @@ class AndConstraint(Constraint):
         tokens.append("&")
         tokens += maybe_parens_tokens(self.rhs, OrConstraint)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -649,20 +644,11 @@ class OrConstraint(Constraint):
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return [*self.lhs.tokens(), "|", *self.rhs.tokens()]
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -784,20 +770,11 @@ class TokenSurface(Surface):
     def __str__(self):
         return f"[{self.constraint}]"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.constraint,)
-
-    def has_holes(self):
-        return self.constraint.has_holes()
+    def children(self):
+        return [self.constraint]
 
     def tokens(self):
         return ["[", *self.constraint.tokens(), "]"]
-
-    def num_matcher_holes(self):
-        return self.constraint.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.constraint.num_constraint_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
@@ -842,17 +819,11 @@ class MentionSurface(Surface):
     def __str__(self):
         return f"@{self.label}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return ["@"] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         entities = vocabularies.get(config.ENTITY_FIELD, [])
@@ -875,26 +846,14 @@ class ConcatSurface(Surface):
         rhs = maybe_parens(self.rhs, OrSurface)
         return f"{lhs} {rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.lhs, OrSurface)
         tokens += maybe_parens_tokens(self.rhs, OrSurface)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -961,23 +920,11 @@ class OrSurface(Surface):
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return [*self.lhs.tokens(), "|", *self.rhs.tokens()]
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -1042,26 +989,14 @@ class RepeatSurface(Surface):
         quant = make_quantifier(self.min, self.max)
         return f"{surf}{quant}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.surf, self.min, self.max)
-
-    def has_holes(self):
-        return self.surf.has_holes()
+    def children(self):
+        return [self.surf]
 
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.surf, (ConcatSurface, OrSurface))
         tokens += make_quantifier_tokens(self.min, self.max)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.surf.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.surf.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.surf.num_surface_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.surf.expand_leftmost_hole(vocabularies, **kwargs)
@@ -1171,20 +1106,11 @@ class IncomingLabelTraversal(Traversal):
     def __str__(self):
         return f"<{self.label}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return ["<"] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.label.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.label.is_hole():
@@ -1225,20 +1151,11 @@ class OutgoingLabelTraversal(Traversal):
     def __str__(self):
         return f">{self.label}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return [">"] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.label.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.label.is_hole():
@@ -1282,23 +1199,14 @@ class ConcatTraversal(Traversal):
         rhs = maybe_parens(self.rhs, OrTraversal)
         return f"{lhs} {rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.lhs, OrTraversal)
         tokens += maybe_parens_tokens(self.rhs, OrTraversal)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -1365,20 +1273,11 @@ class OrTraversal(Traversal):
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return self.lhs.tokens() + ["|"] + self.rhs.tokens()
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -1443,23 +1342,14 @@ class RepeatTraversal(Traversal):
         quant = make_quantifier(self.min, self.max)
         return f"{traversal}{quant}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.traversal, self.min, self.max)
-
-    def has_holes(self):
-        return self.traversal.has_holes()
+    def children(self):
+        return [self.traversal]
 
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.traversal, (ConcatTraversal, OrTraversal))
         tokens += make_quantifier_tokens(self.min, self.max)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.traversal.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.traversal.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.traversal.expand_leftmost_hole(vocabularies, **kwargs)
@@ -1542,54 +1432,14 @@ class HybridQuery(Query):
         traversal = maybe_parens(self.traversal, OrTraversal)
         return f"{src} {traversal} {dst}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.src, self.traversal, self.dst)
-
-    def has_holes(self):
-        return (
-            self.src.has_holes() or self.traversal.has_holes() or self.dst.has_holes()
-        )
+    def children(self):
+        return [self.src, self.dst, self.traversal]
 
     def tokens(self):
         src = maybe_parens_tokens(self.src, OrSurface)
         dst = maybe_parens_tokens(self.dst, OrSurface)
         traversal = maybe_parens_tokens(self.traversal, OrTraversal)
         return src + traversal + dst
-
-    def num_matcher_holes(self):
-        return (
-            self.src.num_matcher_holes()
-            + self.traversal.num_matcher_holes()
-            + self.dst.num_matcher_holes()
-        )
-
-    def num_constraint_holes(self):
-        return (
-            self.src.num_constraint_holes()
-            + self.traversal.num_constraint_holes()
-            + self.dst.num_constraint_holes()
-        )
-
-    def num_surface_holes(self):
-        return (
-            self.src.num_surface_holes()
-            + self.traversal.num_surface_holes()
-            + self.dst.num_surface_holes()
-        )
-
-    def num_traversal_holes(self):
-        return (
-            self.src.num_traversal_holes()
-            + self.traversal.num_traversal_holes()
-            + self.dst.num_traversal_holes()
-        )
-
-    def num_query_holes(self):
-        return (
-            self.src.num_query_holes()
-            + self.traversal.num_query_holes()
-            + self.dst.num_query_holes()
-        )
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.src.has_holes():
