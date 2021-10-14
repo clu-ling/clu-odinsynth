@@ -175,7 +175,7 @@ class AstNode:
     def preorder_traversal(self) -> List[AstNode]:
         """Returns a list with all the nodes of the tree in preorder."""
         # default implementation is for nodes that have no children
-        return [self]
+        return [self] + [c.preorder_traversal() for c in self.children()]
 
     def permutations(self) -> List[AstNode]:
         """Returns all trees that are equivalent to this AstNode."""
@@ -487,13 +487,6 @@ class FieldConstraint(Constraint):
         else:
             return []
 
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.name.preorder_traversal()
-            + self.value.preorder_traversal()
-        )
-
     def over_approximation(self):
         name = self.name.over_approximation()
         if name is None:
@@ -545,9 +538,6 @@ class NotConstraint(Constraint):
         # avoid nesting negations
         return [NotConstraint(n) for n in nodes if not isinstance(n, NotConstraint)]
 
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.constraint.preorder_traversal()
-
     def permutations(self):
         return [NotConstraint(p) for p in self.constraint.permutations()]
 
@@ -597,13 +587,6 @@ class AndConstraint(Constraint):
             return [AndConstraint(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -656,13 +639,6 @@ class OrConstraint(Constraint):
             return [OrConstraint(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -771,9 +747,6 @@ class TokenSurface(Surface):
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         return [TokenSurface(n) for n in nodes]
 
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.constraint.preorder_traversal()
-
     def permutations(self):
         return [TokenSurface(p) for p in self.constraint.permutations()]
 
@@ -819,9 +792,6 @@ class MentionSurface(Surface):
         entities = vocabularies.get(config.ENTITY_FIELD, [])
         return [MentionSurface(ExactMatcher(e)) for e in entities]
 
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
-
 
 class ConcatSurface(Surface):
     _COGNITIVE_WEIGHT = CognitiveWeight.CONCAT_SURFACE
@@ -853,13 +823,6 @@ class ConcatSurface(Surface):
             return [ConcatSurface(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -920,13 +883,6 @@ class OrSurface(Surface):
         else:
             return []
 
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
-
     def permutations(self):
         return get_all_trees(self)
 
@@ -985,9 +941,6 @@ class RepeatSurface(Surface):
         # avoid nesting repetitions
         nodes = [n for n in nodes if not isinstance(n, RepeatSurface)]
         return [RepeatSurface(n, self.min, self.max) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.surf.preorder_traversal()
 
     def permutations(self):
         return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]
@@ -1100,9 +1053,6 @@ class IncomingLabelTraversal(Traversal):
         else:
             return []
 
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
-
     def over_approximation(self):
         label = self.label.over_approximation()
         if label is None:
@@ -1143,9 +1093,6 @@ class OutgoingLabelTraversal(Traversal):
             ]
         else:
             return []
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
 
     def over_approximation(self):
         label = self.label.over_approximation()
@@ -1194,13 +1141,6 @@ class ConcatTraversal(Traversal):
             return [ConcatTraversal(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -1261,13 +1201,6 @@ class OrTraversal(Traversal):
         else:
             return []
 
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
-
     def permutations(self):
         return get_all_trees(self)
 
@@ -1325,9 +1258,6 @@ class RepeatTraversal(Traversal):
         nodes = self.traversal.expand_leftmost_hole(vocabularies, **kwargs)
         nodes = [n for n in nodes if not isinstance(n, RepeatTraversal)]
         return [RepeatTraversal(n, self.min, self.max) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.traversal.preorder_traversal()
 
     def permutations(self):
         return [
@@ -1422,14 +1352,6 @@ class HybridQuery(Query):
             return [HybridQuery(self.src, self.traversal, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.src.preorder_traversal()
-            + self.traversal.preorder_traversal()
-            + self.dst.preorder_traversal()
-        )
 
     def permutations(self):
         return [
