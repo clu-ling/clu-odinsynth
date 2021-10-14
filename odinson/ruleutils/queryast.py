@@ -205,13 +205,19 @@ class AstNode:
     _COGNITIVE_WEIGHT = 0
 
     def cognitive_weight(self) -> int:
-        return self._COGNITIVE_WEIGHT + sum(c.cognitive_weight() for c in self.children())
+        return self._COGNITIVE_WEIGHT + sum(
+            c.cognitive_weight() for c in self.children()
+        )
 
     def operators(self) -> list[str]:
         return [t for t in self.tokens() if t in OPERATORS]
 
     def operands(self) -> list[str]:
-        return [t for t in self.tokens() if t not in OPERATORS and t not in OPERATORS_TO_EXCLUDE]
+        return [
+            t
+            for t in self.tokens()
+            if t not in OPERATORS and t not in OPERATORS_TO_EXCLUDE
+        ]
 
     def num_operators(self) -> int:
         return len(self.operators())
@@ -249,7 +255,7 @@ class AstNode:
 
     def effort(self) -> float:
         return self.program_volume() / self.program_level()
-        
+
     def number_incomings(self) -> int:
         return len(t for t in self.tokens() if t.startswith("<"))
 
