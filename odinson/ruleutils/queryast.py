@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import math
 import itertools
 from typing import Dict, List, Optional, Text, Tuple, Type, Union
 from odinson.ruleutils import config
@@ -218,6 +219,25 @@ class AstNode:
 
     def num_distinct_operands(self) -> int:
         return len(set(self.operands()))
+
+    def implementation_length(self) -> int:
+        return self.num_operators() + self.num_operands()
+
+    def vocabulary_length(self) -> int:
+        return self.num_distinct_operators() + self.num_distinct_operands()
+
+    def program_length(self) -> float:
+        operators = self.num_distinct_operators()
+        operands = self.num_distinct_operands()
+        return operators * math.log(operators, 2) + operands * math.log(operands, 2)
+
+    def program_volume(self) -> float:
+        return self.implementation_length() * math.log(self.vocabulary_length(), 2)
+
+    def potential_volume(self) -> float:
+        # NOTE this may not be correct for our language
+        x = 2 + self.num_distinct_operands()
+        return x * math.log(x, 2)
 
 
 # type alias
