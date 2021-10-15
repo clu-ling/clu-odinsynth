@@ -278,8 +278,12 @@ class AstNode:
         return 1 if not children else sum(c.num_leaves() for c in children)
 
     def tree_height(self, func):
-        heights = [c.tree_height(func) for c in self.children()]
-        return 1 + func(*heights)
+        height = 0
+        children = self.children()
+        if children:
+            heights = [c.tree_height(func) for c in children]
+            height = func(*heights)
+        return height + 1
 
     def max_tree_height(self) -> int:
         return self.tree_height(max)
