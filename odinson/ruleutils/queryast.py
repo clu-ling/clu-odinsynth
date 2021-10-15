@@ -257,10 +257,10 @@ class AstNode:
         return self.program_volume() / self.program_level()
 
     def number_incomings(self) -> int:
-        return len(t for t in self.tokens() if t.startswith("<"))
+        return len([t for t in self.tokens() if t.startswith("<")])
 
     def number_outgoings(self) -> int:
-        return len(t for t in self.tokens() if t.startswith(">"))
+        return len([t for t in self.tokens() if t.startswith(">")])
 
     def proportion_incoming(self) -> float:
         n_in = self.number_incomings()
@@ -281,8 +281,7 @@ class AstNode:
         height = 0
         children = self.children()
         if children:
-            heights = [c.tree_height(func) for c in children]
-            height = func(*heights)
+            height = func(c.tree_height(func) for c in children)
         return height + 1
 
     def max_tree_height(self) -> int:
