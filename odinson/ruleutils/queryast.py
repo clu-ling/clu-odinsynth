@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import math
 import itertools
 from typing import Dict, List, Optional, Text, Tuple, Type, Union
 from odinson.ruleutils import config
@@ -42,8 +43,53 @@ __all__ = [
     "HybridQuery",
 ]
 
+
 # type alias
 Vocabularies = config.Vocabularies
+
+
+OPERATORS_TO_EXCLUDE = {"]", ")", "}"}
+
+
+OPERATORS = {
+    "[",
+    "(",
+    "{",
+    "?",
+    "*",
+    "+",
+    "=",
+    "!",
+    "&",
+    "|",
+    ",",
+    "@",
+    "<",
+    ">",
+    ">>",
+    "<<",
+}
+
+
+class CognitiveWeight:
+    FIELD_CONSTRAINT = 1
+    NOT_CONSTRAINT = 2
+    AND_CONSTRAINT = 3
+    OR_CONSTRAINT = 4
+    WILDCARD_SURFACE = 1
+    TOKEN_SURFACE = 1
+    MENTION_SURFACE = 1
+    CONCAT_SURFACE = 3
+    OR_SURFACE = 4
+    REPEAT_SURFACE = 5
+    INCOMING_WILDCARD_TRAVERSAL = 1
+    OUTGOING_WILDCARD_TRAVERSAL = 1
+    INCOMING_LABEL_TRAVERSAL = 1
+    OUTGOING_LABEL_TRAVERSAL = 1
+    CONCAT_TRAVERSAL = 3
+    OR_TRAVERSAL = 4
+    REPEAT_TRAVERSAL = 5
+    HYBRID_QUERY = 2
 
 
 class AstNode:
@@ -58,8 +104,11 @@ class AstNode:
     def __hash__(self):
         return hash(self.id_tuple())
 
+    def children(self):
+        return []
+
     def id_tuple(self):
-        return (type(self),)
+        return (type(self), *self.children())
 
     def is_hole(self) -> bool:
         """Returns true if the node is a hole."""
@@ -71,7 +120,7 @@ class AstNode:
         """Returns true if the pattern has one or more holes."""
         # most nodes need to override this to handle their children,
         # so the default implementation is intended for Hole* nodes
-        return self.is_hole()
+        return self.is_hole() or any(c.has_holes() for c in self.children())
 
     def is_valid(self) -> bool:
         """Returns true if the pattern is valid, i.e., has no holes."""
@@ -84,23 +133,23 @@ class AstNode:
 
     def num_matcher_holes(self) -> int:
         """Returns the number of matcher holes in this pattern."""
-        return 0
+        return sum(c.num_matcher_holes() for c in self.children())
 
     def num_constraint_holes(self) -> int:
         """Returns the number of constraint holes in this pattern."""
-        return 0
+        return sum(c.num_constraint_holes() for c in self.children())
 
     def num_surface_holes(self) -> int:
         """Returns the number of surface holes in this pattern."""
-        return 0
+        return sum(c.num_surface_holes() for c in self.children())
 
     def num_traversal_holes(self) -> int:
         """Returns the number of traversal holes in this pattern."""
-        return 0
+        return sum(c.num_traversal_holes() for c in self.children())
 
     def num_query_holes(self) -> int:
         """Returns the number of traversal holes in this pattern."""
-        return 0
+        return sum(c.num_query_holes() for c in self.children())
 
     def num_holes(self) -> int:
         """Returns the number of holes in this pattern."""
@@ -126,7 +175,7 @@ class AstNode:
     def preorder_traversal(self) -> List[AstNode]:
         """Returns a list with all the nodes of the tree in preorder."""
         # default implementation is for nodes that have no children
-        return [self]
+        return [self] + [c.preorder_traversal() for c in self.children()]
 
     def permutations(self) -> List[AstNode]:
         """Returns all trees that are equivalent to this AstNode."""
@@ -152,6 +201,94 @@ class AstNode:
     def split(self) -> List[AstNode]:
         """decompose rule"""
         return [self]
+
+    _COGNITIVE_WEIGHT = 0
+
+    def cognitive_weight(self) -> int:
+        return self._COGNITIVE_WEIGHT + sum(
+            c.cognitive_weight() for c in self.children()
+        )
+
+    def operators(self) -> list[str]:
+        return [t for t in self.tokens() if t in OPERATORS]
+
+    def operands(self) -> list[str]:
+        return [
+            t
+            for t in self.tokens()
+            if t not in OPERATORS and t not in OPERATORS_TO_EXCLUDE
+        ]
+
+    def num_operators(self) -> int:
+        return len(self.operators())
+
+    def num_distinct_operators(self) -> int:
+        return len(set(self.operators()))
+
+    def num_operands(self) -> int:
+        return len(self.operands())
+
+    def num_distinct_operands(self) -> int:
+        return len(set(self.operands()))
+
+    def implementation_length(self) -> int:
+        return self.num_operators() + self.num_operands()
+
+    def vocabulary_length(self) -> int:
+        return self.num_distinct_operators() + self.num_distinct_operands()
+
+    def program_length(self) -> float:
+        operators = self.num_distinct_operators()
+        operands = self.num_distinct_operands()
+        return operators * math.log(operators, 2) + operands * math.log(operands, 2)
+
+    def program_volume(self) -> float:
+        return self.implementation_length() * math.log(self.vocabulary_length(), 2)
+
+    def potential_volume(self) -> float:
+        # NOTE this may not be correct for our language
+        x = 2 + self.num_distinct_operands()
+        return x * math.log(x, 2)
+
+    def program_level(self) -> float:
+        return self.potential_volume() / self.program_volume()
+
+    def effort(self) -> float:
+        return self.program_volume() / self.program_level()
+
+    def number_incomings(self) -> int:
+        return len([t for t in self.tokens() if t.startswith("<")])
+
+    def number_outgoings(self) -> int:
+        return len([t for t in self.tokens() if t.startswith(">")])
+
+    def proportion_incoming(self) -> float:
+        n_in = self.number_incomings()
+        n_out = self.number_outgoings()
+        return n_in / (n_in + n_out)
+
+    def num_quantifiers(self):
+        return sum(c.num_quantifiers() for c in self.children())
+
+    def num_nodes(self) -> int:
+        return 1 + sum(c.num_nodes() for c in self.children())
+
+    def num_leaves(self) -> int:
+        children = self.children()
+        return 1 if not children else sum(c.num_leaves() for c in children)
+
+    def tree_height(self, func):
+        height = 0
+        children = self.children()
+        if children:
+            height = func(c.tree_height(func) for c in children)
+        return height + 1
+
+    def max_tree_height(self) -> int:
+        return self.tree_height(max)
+
+    def min_tree_height(self) -> int:
+        return self.tree_height(min)
 
 
 # type alias
@@ -329,6 +466,8 @@ class HoleConstraint(Constraint):
 
 
 class FieldConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.FIELD_CONSTRAINT
+
     def __init__(self, name: Matcher, value: Matcher):
         self.name = name
         self.value = value
@@ -336,17 +475,11 @@ class FieldConstraint(Constraint):
     def __str__(self):
         return f"{self.name}={self.value}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.name, self.value)
-
-    def has_holes(self):
-        return self.name.has_holes() or self.value.has_holes()
+    def children(self):
+        return [self.name, self.value]
 
     def tokens(self):
         return self.name.tokens() + ["="] + self.value.tokens()
-
-    def num_matcher_holes(self):
-        return self.name.num_matcher_holes() + self.value.num_matcher_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.name.is_hole():
@@ -362,13 +495,6 @@ class FieldConstraint(Constraint):
             ]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.name.preorder_traversal()
-            + self.value.preorder_traversal()
-        )
 
     def over_approximation(self):
         name = self.name.over_approximation()
@@ -398,6 +524,8 @@ class FieldConstraint(Constraint):
 
 
 class NotConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.NOT_CONSTRAINT
+
     def __init__(self, c: Constraint):
         self.constraint = c
 
@@ -405,31 +533,19 @@ class NotConstraint(Constraint):
         c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
         return f"!{c}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.constraint,)
-
-    def has_holes(self):
-        return self.constraint.has_holes()
+    def children(self):
+        return [self.constraint]
 
     def tokens(self):
         return ["!"] + maybe_parens_tokens(
             self.constraint, (AndConstraint, OrConstraint)
         )
 
-    def num_matcher_holes(self):
-        return self.constraint.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.constraint.num_constraint_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         # get the next nodes for the nested constraint
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         # avoid nesting negations
         return [NotConstraint(n) for n in nodes if not isinstance(n, NotConstraint)]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.constraint.preorder_traversal()
 
     def permutations(self):
         return [NotConstraint(p) for p in self.constraint.permutations()]
@@ -452,6 +568,8 @@ class NotConstraint(Constraint):
 
 
 class AndConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.AND_CONSTRAINT
+
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
@@ -459,11 +577,8 @@ class AndConstraint(Constraint):
     def __str__(self):
         return f"{self.lhs} & {self.rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
@@ -471,12 +586,6 @@ class AndConstraint(Constraint):
         tokens.append("&")
         tokens += maybe_parens_tokens(self.rhs, OrConstraint)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -487,13 +596,6 @@ class AndConstraint(Constraint):
             return [AndConstraint(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -522,6 +624,8 @@ class AndConstraint(Constraint):
 
 
 class OrConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OR_CONSTRAINT
+
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
@@ -529,20 +633,11 @@ class OrConstraint(Constraint):
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return [*self.lhs.tokens(), "|", *self.rhs.tokens()]
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -553,13 +648,6 @@ class OrConstraint(Constraint):
             return [OrConstraint(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -640,6 +728,8 @@ class HoleSurface(Surface):
 
 
 class WildcardSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.WILDCARD_SURFACE
+
     def __str__(self):
         return "[]"
 
@@ -648,33 +738,23 @@ class WildcardSurface(Surface):
 
 
 class TokenSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.TOKEN_SURFACE
+
     def __init__(self, c: Constraint):
         self.constraint = c
 
     def __str__(self):
         return f"[{self.constraint}]"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.constraint,)
-
-    def has_holes(self):
-        return self.constraint.has_holes()
+    def children(self):
+        return [self.constraint]
 
     def tokens(self):
         return ["[", *self.constraint.tokens(), "]"]
 
-    def num_matcher_holes(self):
-        return self.constraint.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.constraint.num_constraint_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         return [TokenSurface(n) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.constraint.preorder_traversal()
 
     def permutations(self):
         return [TokenSurface(p) for p in self.constraint.permutations()]
@@ -703,33 +783,28 @@ class TokenSurface(Surface):
 
 
 class MentionSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.MENTION_SURFACE
+
     def __init__(self, label: Matcher):
         self.label = label
 
     def __str__(self):
         return f"@{self.label}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return ["@"] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         entities = vocabularies.get(config.ENTITY_FIELD, [])
         return [MentionSurface(ExactMatcher(e)) for e in entities]
 
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
-
 
 class ConcatSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.CONCAT_SURFACE
+
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
         self.rhs = rhs
@@ -739,26 +814,14 @@ class ConcatSurface(Surface):
         rhs = maybe_parens(self.rhs, OrSurface)
         return f"{lhs} {rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.lhs, OrSurface)
         tokens += maybe_parens_tokens(self.rhs, OrSurface)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -769,13 +832,6 @@ class ConcatSurface(Surface):
             return [ConcatSurface(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -811,6 +867,8 @@ class ConcatSurface(Surface):
 
 
 class OrSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OR_SURFACE
+
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
         self.rhs = rhs
@@ -818,23 +876,11 @@ class OrSurface(Surface):
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return [*self.lhs.tokens(), "|", *self.rhs.tokens()]
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -845,13 +891,6 @@ class OrSurface(Surface):
             return [OrSurface(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -882,6 +921,8 @@ class OrSurface(Surface):
 
 
 class RepeatSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.REPEAT_SURFACE
+
     def __init__(self, surf: Surface, min: int, max: Optional[int]):
         self.surf = surf
         self.min = min
@@ -892,11 +933,11 @@ class RepeatSurface(Surface):
         quant = make_quantifier(self.min, self.max)
         return f"{surf}{quant}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.surf, self.min, self.max)
+    def children(self):
+        return [self.surf]
 
-    def has_holes(self):
-        return self.surf.has_holes()
+    def id_tuple(self):
+        return super().id_tuple() + (self.min, self.max)
 
     def tokens(self):
         tokens = []
@@ -904,23 +945,11 @@ class RepeatSurface(Surface):
         tokens += make_quantifier_tokens(self.min, self.max)
         return tokens
 
-    def num_matcher_holes(self):
-        return self.surf.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.surf.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.surf.num_surface_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.surf.expand_leftmost_hole(vocabularies, **kwargs)
         # avoid nesting repetitions
         nodes = [n for n in nodes if not isinstance(n, RepeatSurface)]
         return [RepeatSurface(n, self.min, self.max) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.surf.preorder_traversal()
 
     def permutations(self):
         return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]
@@ -941,6 +970,9 @@ class RepeatSurface(Surface):
         if self.min <= 1 and self.max is None:
             return ConcatSurface(self.surf, ConcatSurface(self.surf, self))
         return self
+
+    def num_quantifiers(self):
+        return 1 + self.surf.num_quantifiers()
 
 
 ####################
@@ -996,36 +1028,33 @@ class HoleTraversal(Traversal):
 
 
 class IncomingWildcardTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.INCOMING_WILDCARD_TRAVERSAL
+
     def __str__(self):
         return "<<"
 
 
 class OutgoingWildcardTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OUTGOING_WILDCARD_TRAVERSAL
+
     def __str__(self):
         return ">>"
 
 
 class IncomingLabelTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.INCOMING_LABEL_TRAVERSAL
+
     def __init__(self, label: Matcher):
         self.label = label
 
     def __str__(self):
         return f"<{self.label}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return ["<"] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.label.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.label.is_hole():
@@ -1035,9 +1064,6 @@ class IncomingLabelTraversal(Traversal):
             ]
         else:
             return []
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
 
     def over_approximation(self):
         label = self.label.over_approximation()
@@ -1057,26 +1083,19 @@ class IncomingLabelTraversal(Traversal):
 
 
 class OutgoingLabelTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OUTGOING_LABEL_TRAVERSAL
+
     def __init__(self, label: Matcher):
         self.label = label
 
     def __str__(self):
         return f">{self.label}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return [">"] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.label.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.label.is_hole():
@@ -1086,9 +1105,6 @@ class OutgoingLabelTraversal(Traversal):
             ]
         else:
             return []
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
 
     def over_approximation(self):
         label = self.label.over_approximation()
@@ -1108,6 +1124,8 @@ class OutgoingLabelTraversal(Traversal):
 
 
 class ConcatTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.CONCAT_TRAVERSAL
+
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
         self.rhs = rhs
@@ -1117,23 +1135,14 @@ class ConcatTraversal(Traversal):
         rhs = maybe_parens(self.rhs, OrTraversal)
         return f"{lhs} {rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.lhs, OrTraversal)
         tokens += maybe_parens_tokens(self.rhs, OrTraversal)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -1144,13 +1153,6 @@ class ConcatTraversal(Traversal):
             return [ConcatTraversal(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -1186,6 +1188,8 @@ class ConcatTraversal(Traversal):
 
 
 class OrTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OR_TRAVERSAL
+
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
         self.rhs = rhs
@@ -1193,20 +1197,11 @@ class OrTraversal(Traversal):
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return self.lhs.tokens() + ["|"] + self.rhs.tokens()
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -1217,13 +1212,6 @@ class OrTraversal(Traversal):
             return [OrTraversal(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -1254,6 +1242,8 @@ class OrTraversal(Traversal):
 
 
 class RepeatTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.REPEAT_TRAVERSAL
+
     def __init__(self, traversal: Traversal, min: int, max: Optional[int]):
         self.traversal = traversal
         self.min = min
@@ -1264,11 +1254,11 @@ class RepeatTraversal(Traversal):
         quant = make_quantifier(self.min, self.max)
         return f"{traversal}{quant}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.traversal, self.min, self.max)
+    def children(self):
+        return [self.traversal]
 
-    def has_holes(self):
-        return self.traversal.has_holes()
+    def id_tuple(self):
+        return super().id_tuple() + (self.min, self.max)
 
     def tokens(self):
         tokens = []
@@ -1276,19 +1266,10 @@ class RepeatTraversal(Traversal):
         tokens += make_quantifier_tokens(self.min, self.max)
         return tokens
 
-    def num_matcher_holes(self):
-        return self.traversal.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.traversal.num_traversal_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.traversal.expand_leftmost_hole(vocabularies, **kwargs)
         nodes = [n for n in nodes if not isinstance(n, RepeatTraversal)]
         return [RepeatTraversal(n, self.min, self.max) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.traversal.preorder_traversal()
 
     def permutations(self):
         return [
@@ -1314,6 +1295,9 @@ class RepeatTraversal(Traversal):
                 self.traversal, ConcatTraversal(self.traversal, self)
             )
         return self
+
+    def num_quantifiers(self):
+        return 1 + self.traversal.num_quantifiers()
 
 
 ####################
@@ -1349,6 +1333,8 @@ class HoleQuery(Query):
 
 
 class HybridQuery(Query):
+    _COGNITIVE_WEIGHT = CognitiveWeight.HYBRID_QUERY
+
     def __init__(self, src: Surface, traversal: Traversal, dst: AstNode):
         self.src = src
         self.dst = dst
@@ -1360,54 +1346,14 @@ class HybridQuery(Query):
         traversal = maybe_parens(self.traversal, OrTraversal)
         return f"{src} {traversal} {dst}"
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.src, self.traversal, self.dst)
-
-    def has_holes(self):
-        return (
-            self.src.has_holes() or self.traversal.has_holes() or self.dst.has_holes()
-        )
+    def children(self):
+        return [self.src, self.traversal, self.dst]
 
     def tokens(self):
         src = maybe_parens_tokens(self.src, OrSurface)
         dst = maybe_parens_tokens(self.dst, OrSurface)
         traversal = maybe_parens_tokens(self.traversal, OrTraversal)
         return src + traversal + dst
-
-    def num_matcher_holes(self):
-        return (
-            self.src.num_matcher_holes()
-            + self.traversal.num_matcher_holes()
-            + self.dst.num_matcher_holes()
-        )
-
-    def num_constraint_holes(self):
-        return (
-            self.src.num_constraint_holes()
-            + self.traversal.num_constraint_holes()
-            + self.dst.num_constraint_holes()
-        )
-
-    def num_surface_holes(self):
-        return (
-            self.src.num_surface_holes()
-            + self.traversal.num_surface_holes()
-            + self.dst.num_surface_holes()
-        )
-
-    def num_traversal_holes(self):
-        return (
-            self.src.num_traversal_holes()
-            + self.traversal.num_traversal_holes()
-            + self.dst.num_traversal_holes()
-        )
-
-    def num_query_holes(self):
-        return (
-            self.src.num_query_holes()
-            + self.traversal.num_query_holes()
-            + self.dst.num_query_holes()
-        )
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.src.has_holes():
@@ -1421,14 +1367,6 @@ class HybridQuery(Query):
             return [HybridQuery(self.src, self.traversal, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.src.preorder_traversal()
-            + self.traversal.preorder_traversal()
-            + self.dst.preorder_traversal()
-        )
 
     def permutations(self):
         return [
