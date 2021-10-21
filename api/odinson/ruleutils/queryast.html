@@ -29,6 +29,7 @@
 </summary>
 <pre><code class="python">from __future__ import annotations
 import json
+import math
 import itertools
 from typing import Dict, List, Optional, Text, Tuple, Type, Union
 from odinson.ruleutils import config
@@ -71,8 +72,53 @@ __all__ = [
     &#34;HybridQuery&#34;,
 ]
 
+
 # type alias
 Vocabularies = config.Vocabularies
+
+
+OPERATORS_TO_EXCLUDE = {&#34;]&#34;, &#34;)&#34;, &#34;}&#34;}
+
+
+OPERATORS = {
+    &#34;[&#34;,
+    &#34;(&#34;,
+    &#34;{&#34;,
+    &#34;?&#34;,
+    &#34;*&#34;,
+    &#34;+&#34;,
+    &#34;=&#34;,
+    &#34;!&#34;,
+    &#34;&amp;&#34;,
+    &#34;|&#34;,
+    &#34;,&#34;,
+    &#34;@&#34;,
+    &#34;&lt;&#34;,
+    &#34;&gt;&#34;,
+    &#34;&gt;&gt;&#34;,
+    &#34;&lt;&lt;&#34;,
+}
+
+
+class CognitiveWeight:
+    FIELD_CONSTRAINT = 1
+    NOT_CONSTRAINT = 2
+    AND_CONSTRAINT = 3
+    OR_CONSTRAINT = 4
+    WILDCARD_SURFACE = 1
+    TOKEN_SURFACE = 1
+    MENTION_SURFACE = 1
+    CONCAT_SURFACE = 3
+    OR_SURFACE = 4
+    REPEAT_SURFACE = 5
+    INCOMING_WILDCARD_TRAVERSAL = 1
+    OUTGOING_WILDCARD_TRAVERSAL = 1
+    INCOMING_LABEL_TRAVERSAL = 1
+    OUTGOING_LABEL_TRAVERSAL = 1
+    CONCAT_TRAVERSAL = 3
+    OR_TRAVERSAL = 4
+    REPEAT_TRAVERSAL = 5
+    HYBRID_QUERY = 2
 
 
 class AstNode:
@@ -87,8 +133,11 @@ class AstNode:
     def __hash__(self):
         return hash(self.id_tuple())
 
+    def children(self):
+        return []
+
     def id_tuple(self):
-        return (type(self),)
+        return (type(self), *self.children())
 
     def is_hole(self) -&gt; bool:
         &#34;&#34;&#34;Returns true if the node is a hole.&#34;&#34;&#34;
@@ -100,7 +149,7 @@ class AstNode:
         &#34;&#34;&#34;Returns true if the pattern has one or more holes.&#34;&#34;&#34;
         # most nodes need to override this to handle their children,
         # so the default implementation is intended for Hole* nodes
-        return self.is_hole()
+        return self.is_hole() or any(c.has_holes() for c in self.children())
 
     def is_valid(self) -&gt; bool:
         &#34;&#34;&#34;Returns true if the pattern is valid, i.e., has no holes.&#34;&#34;&#34;
@@ -113,23 +162,23 @@ class AstNode:
 
     def num_matcher_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of matcher holes in this pattern.&#34;&#34;&#34;
-        return 0
+        return sum(c.num_matcher_holes() for c in self.children())
 
     def num_constraint_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of constraint holes in this pattern.&#34;&#34;&#34;
-        return 0
+        return sum(c.num_constraint_holes() for c in self.children())
 
     def num_surface_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of surface holes in this pattern.&#34;&#34;&#34;
-        return 0
+        return sum(c.num_surface_holes() for c in self.children())
 
     def num_traversal_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of traversal holes in this pattern.&#34;&#34;&#34;
-        return 0
+        return sum(c.num_traversal_holes() for c in self.children())
 
     def num_query_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of traversal holes in this pattern.&#34;&#34;&#34;
-        return 0
+        return sum(c.num_query_holes() for c in self.children())
 
     def num_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of holes in this pattern.&#34;&#34;&#34;
@@ -155,7 +204,7 @@ class AstNode:
     def preorder_traversal(self) -&gt; List[AstNode]:
         &#34;&#34;&#34;Returns a list with all the nodes of the tree in preorder.&#34;&#34;&#34;
         # default implementation is for nodes that have no children
-        return [self]
+        return [self] + [c.preorder_traversal() for c in self.children()]
 
     def permutations(self) -&gt; List[AstNode]:
         &#34;&#34;&#34;Returns all trees that are equivalent to this AstNode.&#34;&#34;&#34;
@@ -181,6 +230,94 @@ class AstNode:
     def split(self) -&gt; List[AstNode]:
         &#34;&#34;&#34;decompose rule&#34;&#34;&#34;
         return [self]
+
+    _COGNITIVE_WEIGHT = 0
+
+    def cognitive_weight(self) -&gt; int:
+        return self._COGNITIVE_WEIGHT + sum(
+            c.cognitive_weight() for c in self.children()
+        )
+
+    def operators(self) -&gt; list[str]:
+        return [t for t in self.tokens() if t in OPERATORS]
+
+    def operands(self) -&gt; list[str]:
+        return [
+            t
+            for t in self.tokens()
+            if t not in OPERATORS and t not in OPERATORS_TO_EXCLUDE
+        ]
+
+    def num_operators(self) -&gt; int:
+        return len(self.operators())
+
+    def num_distinct_operators(self) -&gt; int:
+        return len(set(self.operators()))
+
+    def num_operands(self) -&gt; int:
+        return len(self.operands())
+
+    def num_distinct_operands(self) -&gt; int:
+        return len(set(self.operands()))
+
+    def implementation_length(self) -&gt; int:
+        return self.num_operators() + self.num_operands()
+
+    def vocabulary_length(self) -&gt; int:
+        return self.num_distinct_operators() + self.num_distinct_operands()
+
+    def program_length(self) -&gt; float:
+        operators = self.num_distinct_operators()
+        operands = self.num_distinct_operands()
+        return operators * math.log(operators, 2) + operands * math.log(operands, 2)
+
+    def program_volume(self) -&gt; float:
+        return self.implementation_length() * math.log(self.vocabulary_length(), 2)
+
+    def potential_volume(self) -&gt; float:
+        # NOTE this may not be correct for our language
+        x = 2 + self.num_distinct_operands()
+        return x * math.log(x, 2)
+
+    def program_level(self) -&gt; float:
+        return self.potential_volume() / self.program_volume()
+
+    def effort(self) -&gt; float:
+        return self.program_volume() / self.program_level()
+
+    def number_incomings(self) -&gt; int:
+        return len([t for t in self.tokens() if t.startswith(&#34;&lt;&#34;)])
+
+    def number_outgoings(self) -&gt; int:
+        return len([t for t in self.tokens() if t.startswith(&#34;&gt;&#34;)])
+
+    def proportion_incoming(self) -&gt; float:
+        n_in = self.number_incomings()
+        n_out = self.number_outgoings()
+        return n_in / (n_in + n_out)
+
+    def num_quantifiers(self):
+        return sum(c.num_quantifiers() for c in self.children())
+
+    def num_nodes(self) -&gt; int:
+        return 1 + sum(c.num_nodes() for c in self.children())
+
+    def num_leaves(self) -&gt; int:
+        children = self.children()
+        return 1 if not children else sum(c.num_leaves() for c in children)
+
+    def tree_height(self, func):
+        height = 0
+        children = self.children()
+        if children:
+            height = func(c.tree_height(func) for c in children)
+        return height + 1
+
+    def max_tree_height(self) -&gt; int:
+        return self.tree_height(max)
+
+    def min_tree_height(self) -&gt; int:
+        return self.tree_height(min)
 
 
 # type alias
@@ -358,6 +495,8 @@ class HoleConstraint(Constraint):
 
 
 class FieldConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.FIELD_CONSTRAINT
+
     def __init__(self, name: Matcher, value: Matcher):
         self.name = name
         self.value = value
@@ -365,17 +504,11 @@ class FieldConstraint(Constraint):
     def __str__(self):
         return f&#34;{self.name}={self.value}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.name, self.value)
-
-    def has_holes(self):
-        return self.name.has_holes() or self.value.has_holes()
+    def children(self):
+        return [self.name, self.value]
 
     def tokens(self):
         return self.name.tokens() + [&#34;=&#34;] + self.value.tokens()
-
-    def num_matcher_holes(self):
-        return self.name.num_matcher_holes() + self.value.num_matcher_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.name.is_hole():
@@ -391,13 +524,6 @@ class FieldConstraint(Constraint):
             ]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.name.preorder_traversal()
-            + self.value.preorder_traversal()
-        )
 
     def over_approximation(self):
         name = self.name.over_approximation()
@@ -427,6 +553,8 @@ class FieldConstraint(Constraint):
 
 
 class NotConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.NOT_CONSTRAINT
+
     def __init__(self, c: Constraint):
         self.constraint = c
 
@@ -434,31 +562,19 @@ class NotConstraint(Constraint):
         c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
         return f&#34;!{c}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.constraint,)
-
-    def has_holes(self):
-        return self.constraint.has_holes()
+    def children(self):
+        return [self.constraint]
 
     def tokens(self):
         return [&#34;!&#34;] + maybe_parens_tokens(
             self.constraint, (AndConstraint, OrConstraint)
         )
 
-    def num_matcher_holes(self):
-        return self.constraint.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.constraint.num_constraint_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         # get the next nodes for the nested constraint
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         # avoid nesting negations
         return [NotConstraint(n) for n in nodes if not isinstance(n, NotConstraint)]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.constraint.preorder_traversal()
 
     def permutations(self):
         return [NotConstraint(p) for p in self.constraint.permutations()]
@@ -481,6 +597,8 @@ class NotConstraint(Constraint):
 
 
 class AndConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.AND_CONSTRAINT
+
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
@@ -488,11 +606,8 @@ class AndConstraint(Constraint):
     def __str__(self):
         return f&#34;{self.lhs} &amp; {self.rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
@@ -500,12 +615,6 @@ class AndConstraint(Constraint):
         tokens.append(&#34;&amp;&#34;)
         tokens += maybe_parens_tokens(self.rhs, OrConstraint)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -516,13 +625,6 @@ class AndConstraint(Constraint):
             return [AndConstraint(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -551,6 +653,8 @@ class AndConstraint(Constraint):
 
 
 class OrConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OR_CONSTRAINT
+
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
@@ -558,20 +662,11 @@ class OrConstraint(Constraint):
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return [*self.lhs.tokens(), &#34;|&#34;, *self.rhs.tokens()]
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -582,13 +677,6 @@ class OrConstraint(Constraint):
             return [OrConstraint(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -669,6 +757,8 @@ class HoleSurface(Surface):
 
 
 class WildcardSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.WILDCARD_SURFACE
+
     def __str__(self):
         return &#34;[]&#34;
 
@@ -677,33 +767,23 @@ class WildcardSurface(Surface):
 
 
 class TokenSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.TOKEN_SURFACE
+
     def __init__(self, c: Constraint):
         self.constraint = c
 
     def __str__(self):
         return f&#34;[{self.constraint}]&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.constraint,)
-
-    def has_holes(self):
-        return self.constraint.has_holes()
+    def children(self):
+        return [self.constraint]
 
     def tokens(self):
         return [&#34;[&#34;, *self.constraint.tokens(), &#34;]&#34;]
 
-    def num_matcher_holes(self):
-        return self.constraint.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.constraint.num_constraint_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         return [TokenSurface(n) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.constraint.preorder_traversal()
 
     def permutations(self):
         return [TokenSurface(p) for p in self.constraint.permutations()]
@@ -732,33 +812,28 @@ class TokenSurface(Surface):
 
 
 class MentionSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.MENTION_SURFACE
+
     def __init__(self, label: Matcher):
         self.label = label
 
     def __str__(self):
         return f&#34;@{self.label}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return [&#34;@&#34;] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         entities = vocabularies.get(config.ENTITY_FIELD, [])
         return [MentionSurface(ExactMatcher(e)) for e in entities]
 
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
-
 
 class ConcatSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.CONCAT_SURFACE
+
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
         self.rhs = rhs
@@ -768,26 +843,14 @@ class ConcatSurface(Surface):
         rhs = maybe_parens(self.rhs, OrSurface)
         return f&#34;{lhs} {rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.lhs, OrSurface)
         tokens += maybe_parens_tokens(self.rhs, OrSurface)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -798,13 +861,6 @@ class ConcatSurface(Surface):
             return [ConcatSurface(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -840,6 +896,8 @@ class ConcatSurface(Surface):
 
 
 class OrSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OR_SURFACE
+
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
         self.rhs = rhs
@@ -847,23 +905,11 @@ class OrSurface(Surface):
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return [*self.lhs.tokens(), &#34;|&#34;, *self.rhs.tokens()]
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -874,13 +920,6 @@ class OrSurface(Surface):
             return [OrSurface(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -911,6 +950,8 @@ class OrSurface(Surface):
 
 
 class RepeatSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.REPEAT_SURFACE
+
     def __init__(self, surf: Surface, min: int, max: Optional[int]):
         self.surf = surf
         self.min = min
@@ -921,11 +962,11 @@ class RepeatSurface(Surface):
         quant = make_quantifier(self.min, self.max)
         return f&#34;{surf}{quant}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.surf, self.min, self.max)
+    def children(self):
+        return [self.surf]
 
-    def has_holes(self):
-        return self.surf.has_holes()
+    def id_tuple(self):
+        return super().id_tuple() + (self.min, self.max)
 
     def tokens(self):
         tokens = []
@@ -933,23 +974,11 @@ class RepeatSurface(Surface):
         tokens += make_quantifier_tokens(self.min, self.max)
         return tokens
 
-    def num_matcher_holes(self):
-        return self.surf.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.surf.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.surf.num_surface_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.surf.expand_leftmost_hole(vocabularies, **kwargs)
         # avoid nesting repetitions
         nodes = [n for n in nodes if not isinstance(n, RepeatSurface)]
         return [RepeatSurface(n, self.min, self.max) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.surf.preorder_traversal()
 
     def permutations(self):
         return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]
@@ -970,6 +999,9 @@ class RepeatSurface(Surface):
         if self.min &lt;= 1 and self.max is None:
             return ConcatSurface(self.surf, ConcatSurface(self.surf, self))
         return self
+
+    def num_quantifiers(self):
+        return 1 + self.surf.num_quantifiers()
 
 
 ####################
@@ -1025,36 +1057,33 @@ class HoleTraversal(Traversal):
 
 
 class IncomingWildcardTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.INCOMING_WILDCARD_TRAVERSAL
+
     def __str__(self):
         return &#34;&lt;&lt;&#34;
 
 
 class OutgoingWildcardTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OUTGOING_WILDCARD_TRAVERSAL
+
     def __str__(self):
         return &#34;&gt;&gt;&#34;
 
 
 class IncomingLabelTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.INCOMING_LABEL_TRAVERSAL
+
     def __init__(self, label: Matcher):
         self.label = label
 
     def __str__(self):
         return f&#34;&lt;{self.label}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return [&#34;&lt;&#34;] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.label.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.label.is_hole():
@@ -1064,9 +1093,6 @@ class IncomingLabelTraversal(Traversal):
             ]
         else:
             return []
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
 
     def over_approximation(self):
         label = self.label.over_approximation()
@@ -1086,26 +1112,19 @@ class IncomingLabelTraversal(Traversal):
 
 
 class OutgoingLabelTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OUTGOING_LABEL_TRAVERSAL
+
     def __init__(self, label: Matcher):
         self.label = label
 
     def __str__(self):
         return f&#34;&gt;{self.label}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return [&#34;&gt;&#34;] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.label.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.label.is_hole():
@@ -1115,9 +1134,6 @@ class OutgoingLabelTraversal(Traversal):
             ]
         else:
             return []
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
 
     def over_approximation(self):
         label = self.label.over_approximation()
@@ -1137,6 +1153,8 @@ class OutgoingLabelTraversal(Traversal):
 
 
 class ConcatTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.CONCAT_TRAVERSAL
+
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
         self.rhs = rhs
@@ -1146,23 +1164,14 @@ class ConcatTraversal(Traversal):
         rhs = maybe_parens(self.rhs, OrTraversal)
         return f&#34;{lhs} {rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.lhs, OrTraversal)
         tokens += maybe_parens_tokens(self.rhs, OrTraversal)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -1173,13 +1182,6 @@ class ConcatTraversal(Traversal):
             return [ConcatTraversal(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -1215,6 +1217,8 @@ class ConcatTraversal(Traversal):
 
 
 class OrTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OR_TRAVERSAL
+
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
         self.rhs = rhs
@@ -1222,20 +1226,11 @@ class OrTraversal(Traversal):
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return self.lhs.tokens() + [&#34;|&#34;] + self.rhs.tokens()
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -1246,13 +1241,6 @@ class OrTraversal(Traversal):
             return [OrTraversal(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -1283,6 +1271,8 @@ class OrTraversal(Traversal):
 
 
 class RepeatTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.REPEAT_TRAVERSAL
+
     def __init__(self, traversal: Traversal, min: int, max: Optional[int]):
         self.traversal = traversal
         self.min = min
@@ -1293,11 +1283,11 @@ class RepeatTraversal(Traversal):
         quant = make_quantifier(self.min, self.max)
         return f&#34;{traversal}{quant}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.traversal, self.min, self.max)
+    def children(self):
+        return [self.traversal]
 
-    def has_holes(self):
-        return self.traversal.has_holes()
+    def id_tuple(self):
+        return super().id_tuple() + (self.min, self.max)
 
     def tokens(self):
         tokens = []
@@ -1305,19 +1295,10 @@ class RepeatTraversal(Traversal):
         tokens += make_quantifier_tokens(self.min, self.max)
         return tokens
 
-    def num_matcher_holes(self):
-        return self.traversal.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.traversal.num_traversal_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.traversal.expand_leftmost_hole(vocabularies, **kwargs)
         nodes = [n for n in nodes if not isinstance(n, RepeatTraversal)]
         return [RepeatTraversal(n, self.min, self.max) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.traversal.preorder_traversal()
 
     def permutations(self):
         return [
@@ -1343,6 +1324,9 @@ class RepeatTraversal(Traversal):
                 self.traversal, ConcatTraversal(self.traversal, self)
             )
         return self
+
+    def num_quantifiers(self):
+        return 1 + self.traversal.num_quantifiers()
 
 
 ####################
@@ -1378,6 +1362,8 @@ class HoleQuery(Query):
 
 
 class HybridQuery(Query):
+    _COGNITIVE_WEIGHT = CognitiveWeight.HYBRID_QUERY
+
     def __init__(self, src: Surface, traversal: Traversal, dst: AstNode):
         self.src = src
         self.dst = dst
@@ -1389,54 +1375,14 @@ class HybridQuery(Query):
         traversal = maybe_parens(self.traversal, OrTraversal)
         return f&#34;{src} {traversal} {dst}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.src, self.traversal, self.dst)
-
-    def has_holes(self):
-        return (
-            self.src.has_holes() or self.traversal.has_holes() or self.dst.has_holes()
-        )
+    def children(self):
+        return [self.src, self.traversal, self.dst]
 
     def tokens(self):
         src = maybe_parens_tokens(self.src, OrSurface)
         dst = maybe_parens_tokens(self.dst, OrSurface)
         traversal = maybe_parens_tokens(self.traversal, OrTraversal)
         return src + traversal + dst
-
-    def num_matcher_holes(self):
-        return (
-            self.src.num_matcher_holes()
-            + self.traversal.num_matcher_holes()
-            + self.dst.num_matcher_holes()
-        )
-
-    def num_constraint_holes(self):
-        return (
-            self.src.num_constraint_holes()
-            + self.traversal.num_constraint_holes()
-            + self.dst.num_constraint_holes()
-        )
-
-    def num_surface_holes(self):
-        return (
-            self.src.num_surface_holes()
-            + self.traversal.num_surface_holes()
-            + self.dst.num_surface_holes()
-        )
-
-    def num_traversal_holes(self):
-        return (
-            self.src.num_traversal_holes()
-            + self.traversal.num_traversal_holes()
-            + self.dst.num_traversal_holes()
-        )
-
-    def num_query_holes(self):
-        return (
-            self.src.num_query_holes()
-            + self.traversal.num_query_holes()
-            + self.dst.num_query_holes()
-        )
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.src.has_holes():
@@ -1450,14 +1396,6 @@ class HybridQuery(Query):
             return [HybridQuery(self.src, self.traversal, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.src.preorder_traversal()
-            + self.traversal.preorder_traversal()
-            + self.dst.preorder_traversal()
-        )
 
     def permutations(self):
         return [
@@ -1529,6 +1467,8 @@ class HybridQuery(Query):
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class AndConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.AND_CONSTRAINT
+
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
@@ -1536,11 +1476,8 @@ class HybridQuery(Query):
     def __str__(self):
         return f&#34;{self.lhs} &amp; {self.rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
@@ -1548,12 +1485,6 @@ class HybridQuery(Query):
         tokens.append(&#34;&amp;&#34;)
         tokens += maybe_parens_tokens(self.rhs, OrConstraint)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -1564,13 +1495,6 @@ class HybridQuery(Query):
             return [AndConstraint(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -1604,8 +1528,8 @@ class HybridQuery(Query):
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.AndConstraint.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.AndConstraint.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -1613,8 +1537,8 @@ class HybridQuery(Query):
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.lhs, self.rhs]</code></pre>
 </details>
 </dd>
 </dl>
@@ -1664,8 +1588,11 @@ class HybridQuery(Query):
     def __hash__(self):
         return hash(self.id_tuple())
 
+    def children(self):
+        return []
+
     def id_tuple(self):
-        return (type(self),)
+        return (type(self), *self.children())
 
     def is_hole(self) -&gt; bool:
         &#34;&#34;&#34;Returns true if the node is a hole.&#34;&#34;&#34;
@@ -1677,7 +1604,7 @@ class HybridQuery(Query):
         &#34;&#34;&#34;Returns true if the pattern has one or more holes.&#34;&#34;&#34;
         # most nodes need to override this to handle their children,
         # so the default implementation is intended for Hole* nodes
-        return self.is_hole()
+        return self.is_hole() or any(c.has_holes() for c in self.children())
 
     def is_valid(self) -&gt; bool:
         &#34;&#34;&#34;Returns true if the pattern is valid, i.e., has no holes.&#34;&#34;&#34;
@@ -1690,23 +1617,23 @@ class HybridQuery(Query):
 
     def num_matcher_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of matcher holes in this pattern.&#34;&#34;&#34;
-        return 0
+        return sum(c.num_matcher_holes() for c in self.children())
 
     def num_constraint_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of constraint holes in this pattern.&#34;&#34;&#34;
-        return 0
+        return sum(c.num_constraint_holes() for c in self.children())
 
     def num_surface_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of surface holes in this pattern.&#34;&#34;&#34;
-        return 0
+        return sum(c.num_surface_holes() for c in self.children())
 
     def num_traversal_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of traversal holes in this pattern.&#34;&#34;&#34;
-        return 0
+        return sum(c.num_traversal_holes() for c in self.children())
 
     def num_query_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of traversal holes in this pattern.&#34;&#34;&#34;
-        return 0
+        return sum(c.num_query_holes() for c in self.children())
 
     def num_holes(self) -&gt; int:
         &#34;&#34;&#34;Returns the number of holes in this pattern.&#34;&#34;&#34;
@@ -1732,7 +1659,7 @@ class HybridQuery(Query):
     def preorder_traversal(self) -&gt; List[AstNode]:
         &#34;&#34;&#34;Returns a list with all the nodes of the tree in preorder.&#34;&#34;&#34;
         # default implementation is for nodes that have no children
-        return [self]
+        return [self] + [c.preorder_traversal() for c in self.children()]
 
     def permutations(self) -&gt; List[AstNode]:
         &#34;&#34;&#34;Returns all trees that are equivalent to this AstNode.&#34;&#34;&#34;
@@ -1757,7 +1684,95 @@ class HybridQuery(Query):
 
     def split(self) -&gt; List[AstNode]:
         &#34;&#34;&#34;decompose rule&#34;&#34;&#34;
-        return [self]</code></pre>
+        return [self]
+
+    _COGNITIVE_WEIGHT = 0
+
+    def cognitive_weight(self) -&gt; int:
+        return self._COGNITIVE_WEIGHT + sum(
+            c.cognitive_weight() for c in self.children()
+        )
+
+    def operators(self) -&gt; list[str]:
+        return [t for t in self.tokens() if t in OPERATORS]
+
+    def operands(self) -&gt; list[str]:
+        return [
+            t
+            for t in self.tokens()
+            if t not in OPERATORS and t not in OPERATORS_TO_EXCLUDE
+        ]
+
+    def num_operators(self) -&gt; int:
+        return len(self.operators())
+
+    def num_distinct_operators(self) -&gt; int:
+        return len(set(self.operators()))
+
+    def num_operands(self) -&gt; int:
+        return len(self.operands())
+
+    def num_distinct_operands(self) -&gt; int:
+        return len(set(self.operands()))
+
+    def implementation_length(self) -&gt; int:
+        return self.num_operators() + self.num_operands()
+
+    def vocabulary_length(self) -&gt; int:
+        return self.num_distinct_operators() + self.num_distinct_operands()
+
+    def program_length(self) -&gt; float:
+        operators = self.num_distinct_operators()
+        operands = self.num_distinct_operands()
+        return operators * math.log(operators, 2) + operands * math.log(operands, 2)
+
+    def program_volume(self) -&gt; float:
+        return self.implementation_length() * math.log(self.vocabulary_length(), 2)
+
+    def potential_volume(self) -&gt; float:
+        # NOTE this may not be correct for our language
+        x = 2 + self.num_distinct_operands()
+        return x * math.log(x, 2)
+
+    def program_level(self) -&gt; float:
+        return self.potential_volume() / self.program_volume()
+
+    def effort(self) -&gt; float:
+        return self.program_volume() / self.program_level()
+
+    def number_incomings(self) -&gt; int:
+        return len([t for t in self.tokens() if t.startswith(&#34;&lt;&#34;)])
+
+    def number_outgoings(self) -&gt; int:
+        return len([t for t in self.tokens() if t.startswith(&#34;&gt;&#34;)])
+
+    def proportion_incoming(self) -&gt; float:
+        n_in = self.number_incomings()
+        n_out = self.number_outgoings()
+        return n_in / (n_in + n_out)
+
+    def num_quantifiers(self):
+        return sum(c.num_quantifiers() for c in self.children())
+
+    def num_nodes(self) -&gt; int:
+        return 1 + sum(c.num_nodes() for c in self.children())
+
+    def num_leaves(self) -&gt; int:
+        children = self.children()
+        return 1 if not children else sum(c.num_leaves() for c in children)
+
+    def tree_height(self, func):
+        height = 0
+        children = self.children()
+        if children:
+            height = func(c.tree_height(func) for c in children)
+        return height + 1
+
+    def max_tree_height(self) -&gt; int:
+        return self.tree_height(max)
+
+    def min_tree_height(self) -&gt; int:
+        return self.tree_height(min)</code></pre>
 </details>
 <h3>Subclasses</h3>
 <ul class="hlist">
@@ -1769,6 +1784,47 @@ class HybridQuery(Query):
 </ul>
 <h3>Methods</h3>
 <dl>
+<dt id="odinson.ruleutils.queryast.AstNode.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def children(self):
+    return []</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.cognitive_weight"><code class="name flex">
+<span>def <span class="ident">cognitive_weight</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def cognitive_weight(self) -&gt; int:
+    return self._COGNITIVE_WEIGHT + sum(
+        c.cognitive_weight() for c in self.children()
+    )</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.effort"><code class="name flex">
+<span>def <span class="ident">effort</span></span>(<span>self) ‑> float</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def effort(self) -&gt; float:
+    return self.program_volume() / self.program_level()</code></pre>
+</details>
+</dd>
 <dt id="odinson.ruleutils.queryast.AstNode.expand_leftmost_hole"><code class="name flex">
 <span>def <span class="ident">expand_leftmost_hole</span></span>(<span>self, vocabularies: Vocabularies, **kwargs) ‑> List[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
 </code></dt>
@@ -1806,7 +1862,7 @@ returns an empty list.</p></div>
     &#34;&#34;&#34;Returns true if the pattern has one or more holes.&#34;&#34;&#34;
     # most nodes need to override this to handle their children,
     # so the default implementation is intended for Hole* nodes
-    return self.is_hole()</code></pre>
+    return self.is_hole() or any(c.has_holes() for c in self.children())</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.id_tuple"><code class="name flex">
@@ -1819,7 +1875,20 @@ returns an empty list.</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def id_tuple(self):
-    return (type(self),)</code></pre>
+    return (type(self), *self.children())</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.implementation_length"><code class="name flex">
+<span>def <span class="ident">implementation_length</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def implementation_length(self) -&gt; int:
+    return self.num_operators() + self.num_operands()</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.is_hole"><code class="name flex">
@@ -1852,6 +1921,32 @@ returns an empty list.</p></div>
     return not self.has_holes()</code></pre>
 </details>
 </dd>
+<dt id="odinson.ruleutils.queryast.AstNode.max_tree_height"><code class="name flex">
+<span>def <span class="ident">max_tree_height</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def max_tree_height(self) -&gt; int:
+    return self.tree_height(max)</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.min_tree_height"><code class="name flex">
+<span>def <span class="ident">min_tree_height</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def min_tree_height(self) -&gt; int:
+    return self.tree_height(min)</code></pre>
+</details>
+</dd>
 <dt id="odinson.ruleutils.queryast.AstNode.num_constraint_holes"><code class="name flex">
 <span>def <span class="ident">num_constraint_holes</span></span>(<span>self) ‑> int</span>
 </code></dt>
@@ -1863,7 +1958,33 @@ returns an empty list.</p></div>
 </summary>
 <pre><code class="python">def num_constraint_holes(self) -&gt; int:
     &#34;&#34;&#34;Returns the number of constraint holes in this pattern.&#34;&#34;&#34;
-    return 0</code></pre>
+    return sum(c.num_constraint_holes() for c in self.children())</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_distinct_operands"><code class="name flex">
+<span>def <span class="ident">num_distinct_operands</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_distinct_operands(self) -&gt; int:
+    return len(set(self.operands()))</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_distinct_operators"><code class="name flex">
+<span>def <span class="ident">num_distinct_operators</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_distinct_operators(self) -&gt; int:
+    return len(set(self.operators()))</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.num_holes"><code class="name flex">
@@ -1886,6 +2007,20 @@ returns an empty list.</p></div>
     )</code></pre>
 </details>
 </dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_leaves"><code class="name flex">
+<span>def <span class="ident">num_leaves</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_leaves(self) -&gt; int:
+    children = self.children()
+    return 1 if not children else sum(c.num_leaves() for c in children)</code></pre>
+</details>
+</dd>
 <dt id="odinson.ruleutils.queryast.AstNode.num_matcher_holes"><code class="name flex">
 <span>def <span class="ident">num_matcher_holes</span></span>(<span>self) ‑> int</span>
 </code></dt>
@@ -1897,7 +2032,59 @@ returns an empty list.</p></div>
 </summary>
 <pre><code class="python">def num_matcher_holes(self) -&gt; int:
     &#34;&#34;&#34;Returns the number of matcher holes in this pattern.&#34;&#34;&#34;
-    return 0</code></pre>
+    return sum(c.num_matcher_holes() for c in self.children())</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_nodes"><code class="name flex">
+<span>def <span class="ident">num_nodes</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_nodes(self) -&gt; int:
+    return 1 + sum(c.num_nodes() for c in self.children())</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_operands"><code class="name flex">
+<span>def <span class="ident">num_operands</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_operands(self) -&gt; int:
+    return len(self.operands())</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_operators"><code class="name flex">
+<span>def <span class="ident">num_operators</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_operators(self) -&gt; int:
+    return len(self.operators())</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.num_quantifiers"><code class="name flex">
+<span>def <span class="ident">num_quantifiers</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_quantifiers(self):
+    return sum(c.num_quantifiers() for c in self.children())</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.num_query_holes"><code class="name flex">
@@ -1911,7 +2098,7 @@ returns an empty list.</p></div>
 </summary>
 <pre><code class="python">def num_query_holes(self) -&gt; int:
     &#34;&#34;&#34;Returns the number of traversal holes in this pattern.&#34;&#34;&#34;
-    return 0</code></pre>
+    return sum(c.num_query_holes() for c in self.children())</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.num_surface_holes"><code class="name flex">
@@ -1925,7 +2112,7 @@ returns an empty list.</p></div>
 </summary>
 <pre><code class="python">def num_surface_holes(self) -&gt; int:
     &#34;&#34;&#34;Returns the number of surface holes in this pattern.&#34;&#34;&#34;
-    return 0</code></pre>
+    return sum(c.num_surface_holes() for c in self.children())</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.num_traversal_holes"><code class="name flex">
@@ -1939,7 +2126,63 @@ returns an empty list.</p></div>
 </summary>
 <pre><code class="python">def num_traversal_holes(self) -&gt; int:
     &#34;&#34;&#34;Returns the number of traversal holes in this pattern.&#34;&#34;&#34;
-    return 0</code></pre>
+    return sum(c.num_traversal_holes() for c in self.children())</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.number_incomings"><code class="name flex">
+<span>def <span class="ident">number_incomings</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def number_incomings(self) -&gt; int:
+    return len([t for t in self.tokens() if t.startswith(&#34;&lt;&#34;)])</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.number_outgoings"><code class="name flex">
+<span>def <span class="ident">number_outgoings</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def number_outgoings(self) -&gt; int:
+    return len([t for t in self.tokens() if t.startswith(&#34;&gt;&#34;)])</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.operands"><code class="name flex">
+<span>def <span class="ident">operands</span></span>(<span>self) ‑> list[str]</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def operands(self) -&gt; list[str]:
+    return [
+        t
+        for t in self.tokens()
+        if t not in OPERATORS and t not in OPERATORS_TO_EXCLUDE
+    ]</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.operators"><code class="name flex">
+<span>def <span class="ident">operators</span></span>(<span>self) ‑> list[str]</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def operators(self) -&gt; list[str]:
+    return [t for t in self.tokens() if t in OPERATORS]</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.over_approximation"><code class="name flex">
@@ -1972,6 +2215,21 @@ of the current node's descendents.</p></div>
     return [self]</code></pre>
 </details>
 </dd>
+<dt id="odinson.ruleutils.queryast.AstNode.potential_volume"><code class="name flex">
+<span>def <span class="ident">potential_volume</span></span>(<span>self) ‑> float</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def potential_volume(self) -&gt; float:
+    # NOTE this may not be correct for our language
+    x = 2 + self.num_distinct_operands()
+    return x * math.log(x, 2)</code></pre>
+</details>
+</dd>
 <dt id="odinson.ruleutils.queryast.AstNode.preorder_traversal"><code class="name flex">
 <span>def <span class="ident">preorder_traversal</span></span>(<span>self) ‑> List[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
 </code></dt>
@@ -1984,7 +2242,63 @@ of the current node's descendents.</p></div>
 <pre><code class="python">def preorder_traversal(self) -&gt; List[AstNode]:
     &#34;&#34;&#34;Returns a list with all the nodes of the tree in preorder.&#34;&#34;&#34;
     # default implementation is for nodes that have no children
-    return [self]</code></pre>
+    return [self] + [c.preorder_traversal() for c in self.children()]</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.program_length"><code class="name flex">
+<span>def <span class="ident">program_length</span></span>(<span>self) ‑> float</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def program_length(self) -&gt; float:
+    operators = self.num_distinct_operators()
+    operands = self.num_distinct_operands()
+    return operators * math.log(operators, 2) + operands * math.log(operands, 2)</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.program_level"><code class="name flex">
+<span>def <span class="ident">program_level</span></span>(<span>self) ‑> float</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def program_level(self) -&gt; float:
+    return self.potential_volume() / self.program_volume()</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.program_volume"><code class="name flex">
+<span>def <span class="ident">program_volume</span></span>(<span>self) ‑> float</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def program_volume(self) -&gt; float:
+    return self.implementation_length() * math.log(self.vocabulary_length(), 2)</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.AstNode.proportion_incoming"><code class="name flex">
+<span>def <span class="ident">proportion_incoming</span></span>(<span>self) ‑> float</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def proportion_incoming(self) -&gt; float:
+    n_in = self.number_incomings()
+    n_out = self.number_outgoings()
+    return n_in / (n_in + n_out)</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.redundancy_patterns"><code class="name flex">
@@ -2029,6 +2343,23 @@ of the current node's descendents.</p></div>
     return [Text(self)]</code></pre>
 </details>
 </dd>
+<dt id="odinson.ruleutils.queryast.AstNode.tree_height"><code class="name flex">
+<span>def <span class="ident">tree_height</span></span>(<span>self, func)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def tree_height(self, func):
+    height = 0
+    children = self.children()
+    if children:
+        height = func(c.tree_height(func) for c in children)
+    return height + 1</code></pre>
+</details>
+</dd>
 <dt id="odinson.ruleutils.queryast.AstNode.under_approximation"><code class="name flex">
 <span>def <span class="ident">under_approximation</span></span>(<span>self) ‑> Union[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>, NoneType]</span>
 </code></dt>
@@ -2059,6 +2390,19 @@ of all the descendents of the current node</p></div>
     return self</code></pre>
 </details>
 </dd>
+<dt id="odinson.ruleutils.queryast.AstNode.vocabulary_length"><code class="name flex">
+<span>def <span class="ident">vocabulary_length</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def vocabulary_length(self) -&gt; int:
+    return self.num_distinct_operators() + self.num_distinct_operands()</code></pre>
+</details>
+</dd>
 </dl>
 </dd>
 <dt id="odinson.ruleutils.queryast.ConcatSurface"><code class="flex name class">
@@ -2072,6 +2416,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class ConcatSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.CONCAT_SURFACE
+
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
         self.rhs = rhs
@@ -2081,26 +2427,14 @@ of all the descendents of the current node</p></div>
         rhs = maybe_parens(self.rhs, OrSurface)
         return f&#34;{lhs} {rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.lhs, OrSurface)
         tokens += maybe_parens_tokens(self.rhs, OrSurface)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -2111,13 +2445,6 @@ of all the descendents of the current node</p></div>
             return [ConcatSurface(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -2158,8 +2485,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.ConcatSurface.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.ConcatSurface.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -2167,8 +2494,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.lhs, self.rhs]</code></pre>
 </details>
 </dd>
 </dl>
@@ -2208,6 +2535,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class ConcatTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.CONCAT_TRAVERSAL
+
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
         self.rhs = rhs
@@ -2217,23 +2546,14 @@ of all the descendents of the current node</p></div>
         rhs = maybe_parens(self.rhs, OrTraversal)
         return f&#34;{lhs} {rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         tokens = []
         tokens += maybe_parens_tokens(self.lhs, OrTraversal)
         tokens += maybe_parens_tokens(self.rhs, OrTraversal)
         return tokens
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -2244,13 +2564,6 @@ of all the descendents of the current node</p></div>
             return [ConcatTraversal(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -2291,8 +2604,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.ConcatTraversal.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.ConcatTraversal.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -2300,8 +2613,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.lhs, self.rhs]</code></pre>
 </details>
 </dd>
 </dl>
@@ -2461,6 +2774,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class FieldConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.FIELD_CONSTRAINT
+
     def __init__(self, name: Matcher, value: Matcher):
         self.name = name
         self.value = value
@@ -2468,17 +2783,11 @@ of all the descendents of the current node</p></div>
     def __str__(self):
         return f&#34;{self.name}={self.value}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.name, self.value)
-
-    def has_holes(self):
-        return self.name.has_holes() or self.value.has_holes()
+    def children(self):
+        return [self.name, self.value]
 
     def tokens(self):
         return self.name.tokens() + [&#34;=&#34;] + self.value.tokens()
-
-    def num_matcher_holes(self):
-        return self.name.num_matcher_holes() + self.value.num_matcher_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.name.is_hole():
@@ -2494,13 +2803,6 @@ of all the descendents of the current node</p></div>
             ]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.name.preorder_traversal()
-            + self.value.preorder_traversal()
-        )
 
     def over_approximation(self):
         name = self.name.over_approximation()
@@ -2535,8 +2837,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.FieldConstraint.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.FieldConstraint.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -2544,8 +2846,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.name, self.value)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.name, self.value]</code></pre>
 </details>
 </dd>
 </dl>
@@ -2923,6 +3225,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class HybridQuery(Query):
+    _COGNITIVE_WEIGHT = CognitiveWeight.HYBRID_QUERY
+
     def __init__(self, src: Surface, traversal: Traversal, dst: AstNode):
         self.src = src
         self.dst = dst
@@ -2934,54 +3238,14 @@ of all the descendents of the current node</p></div>
         traversal = maybe_parens(self.traversal, OrTraversal)
         return f&#34;{src} {traversal} {dst}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.src, self.traversal, self.dst)
-
-    def has_holes(self):
-        return (
-            self.src.has_holes() or self.traversal.has_holes() or self.dst.has_holes()
-        )
+    def children(self):
+        return [self.src, self.traversal, self.dst]
 
     def tokens(self):
         src = maybe_parens_tokens(self.src, OrSurface)
         dst = maybe_parens_tokens(self.dst, OrSurface)
         traversal = maybe_parens_tokens(self.traversal, OrTraversal)
         return src + traversal + dst
-
-    def num_matcher_holes(self):
-        return (
-            self.src.num_matcher_holes()
-            + self.traversal.num_matcher_holes()
-            + self.dst.num_matcher_holes()
-        )
-
-    def num_constraint_holes(self):
-        return (
-            self.src.num_constraint_holes()
-            + self.traversal.num_constraint_holes()
-            + self.dst.num_constraint_holes()
-        )
-
-    def num_surface_holes(self):
-        return (
-            self.src.num_surface_holes()
-            + self.traversal.num_surface_holes()
-            + self.dst.num_surface_holes()
-        )
-
-    def num_traversal_holes(self):
-        return (
-            self.src.num_traversal_holes()
-            + self.traversal.num_traversal_holes()
-            + self.dst.num_traversal_holes()
-        )
-
-    def num_query_holes(self):
-        return (
-            self.src.num_query_holes()
-            + self.traversal.num_query_holes()
-            + self.dst.num_query_holes()
-        )
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.src.has_holes():
@@ -2995,14 +3259,6 @@ of all the descendents of the current node</p></div>
             return [HybridQuery(self.src, self.traversal, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.src.preorder_traversal()
-            + self.traversal.preorder_traversal()
-            + self.dst.preorder_traversal()
-        )
 
     def permutations(self):
         return [
@@ -3060,8 +3316,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.HybridQuery.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.HybridQuery.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -3069,8 +3325,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.src, self.traversal, self.dst)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.src, self.traversal, self.dst]</code></pre>
 </details>
 </dd>
 </dl>
@@ -3110,26 +3366,19 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class IncomingLabelTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.INCOMING_LABEL_TRAVERSAL
+
     def __init__(self, label: Matcher):
         self.label = label
 
     def __str__(self):
         return f&#34;&lt;{self.label}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return [&#34;&lt;&#34;] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.label.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.label.is_hole():
@@ -3139,9 +3388,6 @@ of all the descendents of the current node</p></div>
             ]
         else:
             return []
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
 
     def over_approximation(self):
         label = self.label.over_approximation()
@@ -3166,8 +3412,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.IncomingLabelTraversal.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.IncomingLabelTraversal.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -3175,8 +3421,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.label,)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.label]</code></pre>
 </details>
 </dd>
 </dl>
@@ -3215,6 +3461,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class IncomingWildcardTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.INCOMING_WILDCARD_TRAVERSAL
+
     def __str__(self):
         return &#34;&lt;&lt;&#34;</code></pre>
 </details>
@@ -3306,30 +3554,23 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class MentionSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.MENTION_SURFACE
+
     def __init__(self, label: Matcher):
         self.label = label
 
     def __str__(self):
         return f&#34;@{self.label}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return [&#34;@&#34;] + self.label.tokens()
 
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         entities = vocabularies.get(config.ENTITY_FIELD, [])
-        return [MentionSurface(ExactMatcher(e)) for e in entities]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()</code></pre>
+        return [MentionSurface(ExactMatcher(e)) for e in entities]</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -3338,8 +3579,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.MentionSurface.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.MentionSurface.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -3347,8 +3588,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.label,)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.label]</code></pre>
 </details>
 </dd>
 </dl>
@@ -3388,6 +3629,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class NotConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.NOT_CONSTRAINT
+
     def __init__(self, c: Constraint):
         self.constraint = c
 
@@ -3395,31 +3638,19 @@ of all the descendents of the current node</p></div>
         c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
         return f&#34;!{c}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.constraint,)
-
-    def has_holes(self):
-        return self.constraint.has_holes()
+    def children(self):
+        return [self.constraint]
 
     def tokens(self):
         return [&#34;!&#34;] + maybe_parens_tokens(
             self.constraint, (AndConstraint, OrConstraint)
         )
 
-    def num_matcher_holes(self):
-        return self.constraint.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.constraint.num_constraint_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         # get the next nodes for the nested constraint
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         # avoid nesting negations
         return [NotConstraint(n) for n in nodes if not isinstance(n, NotConstraint)]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.constraint.preorder_traversal()
 
     def permutations(self):
         return [NotConstraint(p) for p in self.constraint.permutations()]
@@ -3447,8 +3678,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.NotConstraint.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.NotConstraint.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -3456,8 +3687,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.constraint,)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.constraint]</code></pre>
 </details>
 </dd>
 </dl>
@@ -3497,6 +3728,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class OrConstraint(Constraint):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OR_CONSTRAINT
+
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
@@ -3504,20 +3737,11 @@ of all the descendents of the current node</p></div>
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return [*self.lhs.tokens(), &#34;|&#34;, *self.rhs.tokens()]
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -3528,13 +3752,6 @@ of all the descendents of the current node</p></div>
             return [OrConstraint(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -3571,8 +3788,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.OrConstraint.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.OrConstraint.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -3580,8 +3797,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.lhs, self.rhs]</code></pre>
 </details>
 </dd>
 </dl>
@@ -3621,6 +3838,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class OrSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OR_SURFACE
+
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
         self.rhs = rhs
@@ -3628,23 +3847,11 @@ of all the descendents of the current node</p></div>
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return [*self.lhs.tokens(), &#34;|&#34;, *self.rhs.tokens()]
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.lhs.num_constraint_holes() + self.rhs.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.lhs.num_surface_holes() + self.rhs.num_surface_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -3655,13 +3862,6 @@ of all the descendents of the current node</p></div>
             return [OrSurface(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -3697,8 +3897,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.OrSurface.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.OrSurface.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -3706,8 +3906,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.lhs, self.rhs]</code></pre>
 </details>
 </dd>
 </dl>
@@ -3747,6 +3947,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class OrTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OR_TRAVERSAL
+
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
         self.rhs = rhs
@@ -3754,20 +3956,11 @@ of all the descendents of the current node</p></div>
     def __str__(self):
         return f&#34;{self.lhs} | {self.rhs}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.lhs, self.rhs)
-
-    def has_holes(self):
-        return self.lhs.has_holes() or self.rhs.has_holes()
+    def children(self):
+        return [self.lhs, self.rhs]
 
     def tokens(self):
         return self.lhs.tokens() + [&#34;|&#34;] + self.rhs.tokens()
-
-    def num_matcher_holes(self):
-        return self.lhs.num_matcher_holes() + self.rhs.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.lhs.num_traversal_holes() + self.rhs.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.lhs.has_holes():
@@ -3778,13 +3971,6 @@ of all the descendents of the current node</p></div>
             return [OrTraversal(self.lhs, n) for n in nodes]
         else:
             return []
-
-    def preorder_traversal(self):
-        return (
-            super().preorder_traversal()
-            + self.lhs.preorder_traversal()
-            + self.rhs.preorder_traversal()
-        )
 
     def permutations(self):
         return get_all_trees(self)
@@ -3820,8 +4006,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.OrTraversal.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.OrTraversal.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -3829,8 +4015,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.lhs, self.rhs)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.lhs, self.rhs]</code></pre>
 </details>
 </dd>
 </dl>
@@ -3870,26 +4056,19 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class OutgoingLabelTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OUTGOING_LABEL_TRAVERSAL
+
     def __init__(self, label: Matcher):
         self.label = label
 
     def __str__(self):
         return f&#34;&gt;{self.label}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.label,)
-
-    def has_holes(self):
-        return self.label.has_holes()
+    def children(self):
+        return [self.label]
 
     def tokens(self):
         return [&#34;&gt;&#34;] + self.label.tokens()
-
-    def num_matcher_holes(self):
-        return self.label.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.label.num_traversal_holes()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         if self.label.is_hole():
@@ -3899,9 +4078,6 @@ of all the descendents of the current node</p></div>
             ]
         else:
             return []
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.label.preorder_traversal()
 
     def over_approximation(self):
         label = self.label.over_approximation()
@@ -3926,8 +4102,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.OutgoingLabelTraversal.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.OutgoingLabelTraversal.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -3935,8 +4111,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.label,)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.label]</code></pre>
 </details>
 </dd>
 </dl>
@@ -3975,6 +4151,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class OutgoingWildcardTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.OUTGOING_WILDCARD_TRAVERSAL
+
     def __str__(self):
         return &#34;&gt;&gt;&#34;</code></pre>
 </details>
@@ -4065,6 +4243,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class RepeatSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.REPEAT_SURFACE
+
     def __init__(self, surf: Surface, min: int, max: Optional[int]):
         self.surf = surf
         self.min = min
@@ -4075,11 +4255,11 @@ of all the descendents of the current node</p></div>
         quant = make_quantifier(self.min, self.max)
         return f&#34;{surf}{quant}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.surf, self.min, self.max)
+    def children(self):
+        return [self.surf]
 
-    def has_holes(self):
-        return self.surf.has_holes()
+    def id_tuple(self):
+        return super().id_tuple() + (self.min, self.max)
 
     def tokens(self):
         tokens = []
@@ -4087,23 +4267,11 @@ of all the descendents of the current node</p></div>
         tokens += make_quantifier_tokens(self.min, self.max)
         return tokens
 
-    def num_matcher_holes(self):
-        return self.surf.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.surf.num_constraint_holes()
-
-    def num_surface_holes(self):
-        return self.surf.num_surface_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.surf.expand_leftmost_hole(vocabularies, **kwargs)
         # avoid nesting repetitions
         nodes = [n for n in nodes if not isinstance(n, RepeatSurface)]
         return [RepeatSurface(n, self.min, self.max) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.surf.preorder_traversal()
 
     def permutations(self):
         return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]
@@ -4123,7 +4291,10 @@ of all the descendents of the current node</p></div>
     def unroll(self):
         if self.min &lt;= 1 and self.max is None:
             return ConcatSurface(self.surf, ConcatSurface(self.surf, self))
-        return self</code></pre>
+        return self
+
+    def num_quantifiers(self):
+        return 1 + self.surf.num_quantifiers()</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -4132,6 +4303,19 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
+<dt id="odinson.ruleutils.queryast.RepeatSurface.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def children(self):
+    return [self.surf]</code></pre>
+</details>
+</dd>
 <dt id="odinson.ruleutils.queryast.RepeatSurface.id_tuple"><code class="name flex">
 <span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
 </code></dt>
@@ -4142,7 +4326,20 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.surf, self.min, self.max)</code></pre>
+    return super().id_tuple() + (self.min, self.max)</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.RepeatSurface.num_quantifiers"><code class="name flex">
+<span>def <span class="ident">num_quantifiers</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_quantifiers(self):
+    return 1 + self.surf.num_quantifiers()</code></pre>
 </details>
 </dd>
 </dl>
@@ -4182,6 +4379,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class RepeatTraversal(Traversal):
+    _COGNITIVE_WEIGHT = CognitiveWeight.REPEAT_TRAVERSAL
+
     def __init__(self, traversal: Traversal, min: int, max: Optional[int]):
         self.traversal = traversal
         self.min = min
@@ -4192,11 +4391,11 @@ of all the descendents of the current node</p></div>
         quant = make_quantifier(self.min, self.max)
         return f&#34;{traversal}{quant}&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.traversal, self.min, self.max)
+    def children(self):
+        return [self.traversal]
 
-    def has_holes(self):
-        return self.traversal.has_holes()
+    def id_tuple(self):
+        return super().id_tuple() + (self.min, self.max)
 
     def tokens(self):
         tokens = []
@@ -4204,19 +4403,10 @@ of all the descendents of the current node</p></div>
         tokens += make_quantifier_tokens(self.min, self.max)
         return tokens
 
-    def num_matcher_holes(self):
-        return self.traversal.num_matcher_holes()
-
-    def num_traversal_holes(self):
-        return self.traversal.num_traversal_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.traversal.expand_leftmost_hole(vocabularies, **kwargs)
         nodes = [n for n in nodes if not isinstance(n, RepeatTraversal)]
         return [RepeatTraversal(n, self.min, self.max) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.traversal.preorder_traversal()
 
     def permutations(self):
         return [
@@ -4241,7 +4431,10 @@ of all the descendents of the current node</p></div>
             return ConcatTraversal(
                 self.traversal, ConcatTraversal(self.traversal, self)
             )
-        return self</code></pre>
+        return self
+
+    def num_quantifiers(self):
+        return 1 + self.traversal.num_quantifiers()</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -4250,6 +4443,19 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
+<dt id="odinson.ruleutils.queryast.RepeatTraversal.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def children(self):
+    return [self.traversal]</code></pre>
+</details>
+</dd>
 <dt id="odinson.ruleutils.queryast.RepeatTraversal.id_tuple"><code class="name flex">
 <span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
 </code></dt>
@@ -4260,7 +4466,20 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.traversal, self.min, self.max)</code></pre>
+    return super().id_tuple() + (self.min, self.max)</code></pre>
+</details>
+</dd>
+<dt id="odinson.ruleutils.queryast.RepeatTraversal.num_quantifiers"><code class="name flex">
+<span>def <span class="ident">num_quantifiers</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_quantifiers(self):
+    return 1 + self.traversal.num_quantifiers()</code></pre>
 </details>
 </dd>
 </dl>
@@ -4351,33 +4570,23 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class TokenSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.TOKEN_SURFACE
+
     def __init__(self, c: Constraint):
         self.constraint = c
 
     def __str__(self):
         return f&#34;[{self.constraint}]&#34;
 
-    def id_tuple(self):
-        return super().id_tuple() + (self.constraint,)
-
-    def has_holes(self):
-        return self.constraint.has_holes()
+    def children(self):
+        return [self.constraint]
 
     def tokens(self):
         return [&#34;[&#34;, *self.constraint.tokens(), &#34;]&#34;]
 
-    def num_matcher_holes(self):
-        return self.constraint.num_matcher_holes()
-
-    def num_constraint_holes(self):
-        return self.constraint.num_constraint_holes()
-
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         return [TokenSurface(n) for n in nodes]
-
-    def preorder_traversal(self):
-        return super().preorder_traversal() + self.constraint.preorder_traversal()
 
     def permutations(self):
         return [TokenSurface(p) for p in self.constraint.permutations()]
@@ -4411,8 +4620,8 @@ of all the descendents of the current node</p></div>
 </ul>
 <h3>Methods</h3>
 <dl>
-<dt id="odinson.ruleutils.queryast.TokenSurface.id_tuple"><code class="name flex">
-<span>def <span class="ident">id_tuple</span></span>(<span>self)</span>
+<dt id="odinson.ruleutils.queryast.TokenSurface.children"><code class="name flex">
+<span>def <span class="ident">children</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -4420,8 +4629,8 @@ of all the descendents of the current node</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def id_tuple(self):
-    return super().id_tuple() + (self.constraint,)</code></pre>
+<pre><code class="python">def children(self):
+    return [self.constraint]</code></pre>
 </details>
 </dd>
 </dl>
@@ -4512,6 +4721,8 @@ of all the descendents of the current node</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class WildcardSurface(Surface):
+    _COGNITIVE_WEIGHT = CognitiveWeight.WILDCARD_SURFACE
+
     def __str__(self):
         return &#34;[]&#34;
 
@@ -4567,43 +4778,67 @@ of all the descendents of the current node</p></div>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.AndConstraint" href="#odinson.ruleutils.queryast.AndConstraint">AndConstraint</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.AndConstraint.id_tuple" href="#odinson.ruleutils.queryast.AndConstraint.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AndConstraint.children" href="#odinson.ruleutils.queryast.AndConstraint.children">children</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></code></h4>
 <ul class="">
+<li><code><a title="odinson.ruleutils.queryast.AstNode.children" href="#odinson.ruleutils.queryast.AstNode.children">children</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.cognitive_weight" href="#odinson.ruleutils.queryast.AstNode.cognitive_weight">cognitive_weight</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.effort" href="#odinson.ruleutils.queryast.AstNode.effort">effort</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.id_tuple" href="#odinson.ruleutils.queryast.AstNode.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.implementation_length" href="#odinson.ruleutils.queryast.AstNode.implementation_length">implementation_length</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.max_tree_height" href="#odinson.ruleutils.queryast.AstNode.max_tree_height">max_tree_height</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.min_tree_height" href="#odinson.ruleutils.queryast.AstNode.min_tree_height">min_tree_height</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_distinct_operands" href="#odinson.ruleutils.queryast.AstNode.num_distinct_operands">num_distinct_operands</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_distinct_operators" href="#odinson.ruleutils.queryast.AstNode.num_distinct_operators">num_distinct_operators</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_leaves" href="#odinson.ruleutils.queryast.AstNode.num_leaves">num_leaves</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_nodes" href="#odinson.ruleutils.queryast.AstNode.num_nodes">num_nodes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_operands" href="#odinson.ruleutils.queryast.AstNode.num_operands">num_operands</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_operators" href="#odinson.ruleutils.queryast.AstNode.num_operators">num_operators</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.num_quantifiers" href="#odinson.ruleutils.queryast.AstNode.num_quantifiers">num_quantifiers</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.number_incomings" href="#odinson.ruleutils.queryast.AstNode.number_incomings">number_incomings</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.number_outgoings" href="#odinson.ruleutils.queryast.AstNode.number_outgoings">number_outgoings</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.operands" href="#odinson.ruleutils.queryast.AstNode.operands">operands</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.operators" href="#odinson.ruleutils.queryast.AstNode.operators">operators</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.potential_volume" href="#odinson.ruleutils.queryast.AstNode.potential_volume">potential_volume</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.program_length" href="#odinson.ruleutils.queryast.AstNode.program_length">program_length</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.program_level" href="#odinson.ruleutils.queryast.AstNode.program_level">program_level</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.program_volume" href="#odinson.ruleutils.queryast.AstNode.program_volume">program_volume</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.proportion_incoming" href="#odinson.ruleutils.queryast.AstNode.proportion_incoming">proportion_incoming</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.redundancy_patterns" href="#odinson.ruleutils.queryast.AstNode.redundancy_patterns">redundancy_patterns</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.tree_height" href="#odinson.ruleutils.queryast.AstNode.tree_height">tree_height</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.AstNode.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.AstNode.vocabulary_length" href="#odinson.ruleutils.queryast.AstNode.vocabulary_length">vocabulary_length</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.ConcatSurface" href="#odinson.ruleutils.queryast.ConcatSurface">ConcatSurface</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.ConcatSurface.id_tuple" href="#odinson.ruleutils.queryast.ConcatSurface.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.ConcatSurface.children" href="#odinson.ruleutils.queryast.ConcatSurface.children">children</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.ConcatTraversal" href="#odinson.ruleutils.queryast.ConcatTraversal">ConcatTraversal</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.ConcatTraversal.id_tuple" href="#odinson.ruleutils.queryast.ConcatTraversal.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.ConcatTraversal.children" href="#odinson.ruleutils.queryast.ConcatTraversal.children">children</a></code></li>
 </ul>
 </li>
 <li>
@@ -4618,7 +4853,7 @@ of all the descendents of the current node</p></div>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.FieldConstraint" href="#odinson.ruleutils.queryast.FieldConstraint">FieldConstraint</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.FieldConstraint.id_tuple" href="#odinson.ruleutils.queryast.FieldConstraint.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.FieldConstraint.children" href="#odinson.ruleutils.queryast.FieldConstraint.children">children</a></code></li>
 </ul>
 </li>
 <li>
@@ -4639,13 +4874,13 @@ of all the descendents of the current node</p></div>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.HybridQuery" href="#odinson.ruleutils.queryast.HybridQuery">HybridQuery</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.HybridQuery.id_tuple" href="#odinson.ruleutils.queryast.HybridQuery.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.HybridQuery.children" href="#odinson.ruleutils.queryast.HybridQuery.children">children</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.IncomingLabelTraversal" href="#odinson.ruleutils.queryast.IncomingLabelTraversal">IncomingLabelTraversal</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.IncomingLabelTraversal.id_tuple" href="#odinson.ruleutils.queryast.IncomingLabelTraversal.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.IncomingLabelTraversal.children" href="#odinson.ruleutils.queryast.IncomingLabelTraversal.children">children</a></code></li>
 </ul>
 </li>
 <li>
@@ -4657,37 +4892,37 @@ of all the descendents of the current node</p></div>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.MentionSurface" href="#odinson.ruleutils.queryast.MentionSurface">MentionSurface</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.MentionSurface.id_tuple" href="#odinson.ruleutils.queryast.MentionSurface.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.MentionSurface.children" href="#odinson.ruleutils.queryast.MentionSurface.children">children</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.NotConstraint" href="#odinson.ruleutils.queryast.NotConstraint">NotConstraint</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.NotConstraint.id_tuple" href="#odinson.ruleutils.queryast.NotConstraint.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.NotConstraint.children" href="#odinson.ruleutils.queryast.NotConstraint.children">children</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.OrConstraint" href="#odinson.ruleutils.queryast.OrConstraint">OrConstraint</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.OrConstraint.id_tuple" href="#odinson.ruleutils.queryast.OrConstraint.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.OrConstraint.children" href="#odinson.ruleutils.queryast.OrConstraint.children">children</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.OrSurface" href="#odinson.ruleutils.queryast.OrSurface">OrSurface</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.OrSurface.id_tuple" href="#odinson.ruleutils.queryast.OrSurface.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.OrSurface.children" href="#odinson.ruleutils.queryast.OrSurface.children">children</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.OrTraversal" href="#odinson.ruleutils.queryast.OrTraversal">OrTraversal</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.OrTraversal.id_tuple" href="#odinson.ruleutils.queryast.OrTraversal.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.OrTraversal.children" href="#odinson.ruleutils.queryast.OrTraversal.children">children</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.OutgoingLabelTraversal" href="#odinson.ruleutils.queryast.OutgoingLabelTraversal">OutgoingLabelTraversal</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.OutgoingLabelTraversal.id_tuple" href="#odinson.ruleutils.queryast.OutgoingLabelTraversal.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.OutgoingLabelTraversal.children" href="#odinson.ruleutils.queryast.OutgoingLabelTraversal.children">children</a></code></li>
 </ul>
 </li>
 <li>
@@ -4699,13 +4934,17 @@ of all the descendents of the current node</p></div>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.RepeatSurface" href="#odinson.ruleutils.queryast.RepeatSurface">RepeatSurface</a></code></h4>
 <ul class="">
+<li><code><a title="odinson.ruleutils.queryast.RepeatSurface.children" href="#odinson.ruleutils.queryast.RepeatSurface.children">children</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.RepeatSurface.id_tuple" href="#odinson.ruleutils.queryast.RepeatSurface.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.RepeatSurface.num_quantifiers" href="#odinson.ruleutils.queryast.RepeatSurface.num_quantifiers">num_quantifiers</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.RepeatTraversal" href="#odinson.ruleutils.queryast.RepeatTraversal">RepeatTraversal</a></code></h4>
 <ul class="">
+<li><code><a title="odinson.ruleutils.queryast.RepeatTraversal.children" href="#odinson.ruleutils.queryast.RepeatTraversal.children">children</a></code></li>
 <li><code><a title="odinson.ruleutils.queryast.RepeatTraversal.id_tuple" href="#odinson.ruleutils.queryast.RepeatTraversal.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.RepeatTraversal.num_quantifiers" href="#odinson.ruleutils.queryast.RepeatTraversal.num_quantifiers">num_quantifiers</a></code></li>
 </ul>
 </li>
 <li>
@@ -4714,7 +4953,7 @@ of all the descendents of the current node</p></div>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.TokenSurface" href="#odinson.ruleutils.queryast.TokenSurface">TokenSurface</a></code></h4>
 <ul class="">
-<li><code><a title="odinson.ruleutils.queryast.TokenSurface.id_tuple" href="#odinson.ruleutils.queryast.TokenSurface.id_tuple">id_tuple</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.TokenSurface.children" href="#odinson.ruleutils.queryast.TokenSurface.children">children</a></code></li>
 </ul>
 </li>
 <li>
