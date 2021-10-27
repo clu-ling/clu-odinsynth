@@ -1,7 +1,7 @@
 from __future__ import annotations
 import json
 import itertools
-from typing import Dict, List, Optional, Text, Tuple, Type, Union
+from typing import List, Text, Optional, Tuple, Type, Union
 from odinson.ruleutils import config
 
 __all__ = [
