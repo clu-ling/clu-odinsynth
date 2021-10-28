@@ -1,19 +1,7 @@
-from setuptools.command.install import install
-from setuptools.command.develop import develop
 from setuptools import setup
+import os
 
 from odinson.ruleutils.info import info
-
-# class PackageDevelop(develop):
-#     def run(self):
-#         develop.run(self)
-
-
-# class PackageInstall(install):
-#     def run(self):
-#         # install everything else
-#         install.run(self)
-
 
 # use requirements.txt as deps list
 with open("requirements.txt", "r") as f:
@@ -54,7 +42,7 @@ setup(
     author_email=info.contact,
     license=info.license,
     # see https://python-packaging.readthedocs.io/en/latest/command-line-scripts.html
-    scripts=["bin/example-script"],
+    scripts=[os.path.join("bin", "example-script")],
     install_requires=required,
     classifiers=[
         "Intended Audience :: Science/Research",

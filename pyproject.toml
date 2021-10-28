@@ -1,3 +1,9 @@
+# https://packaging.python.org/tutorials/packaging-projects/#creating-pyproject-toml
+# https://www.python.org/dev/peps/pep-0621/
+
+[bdist_wheel]
+universal = 1
+
 # Example configuration for Black.
 
 # NOTE: you have to use single-quoted strings in TOML for regular expressions.
