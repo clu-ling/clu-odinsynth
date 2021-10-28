@@ -1,19 +1,7 @@
-from setuptools.command.install import install
-from setuptools.command.develop import develop
 from setuptools import setup
+import os
 
 from odinson.ruleutils.info import info
-
-# class PackageDevelop(develop):
-#     def run(self):
-#         develop.run(self)
-
-
-# class PackageInstall(install):
-#     def run(self):
-#         # install everything else
-#         install.run(self)
-
 
 # use requirements.txt as deps list
 with open("requirements.txt", "r") as f:
@@ -23,7 +11,11 @@ with open("requirements.txt", "r") as f:
 with open("README.md", "r") as f:
     readme = f.read()
 
-test_deps = required + ["green>=2.5.0", "coverage", "mypy"]
+test_deps = required + [
+    "green>=2.5.0", 
+    "coverage", 
+    "mypy"
+]
 # NOTE: <packagename> @ allows installation of git-based URLs
 dev_deps = test_deps + [
     "black",
@@ -54,7 +46,7 @@ setup(
     author_email=info.contact,
     license=info.license,
     # see https://python-packaging.readthedocs.io/en/latest/command-line-scripts.html
-    scripts=["bin/example-script"],
+    scripts=[os.path.join("bin", "example-script")],
     install_requires=required,
     classifiers=[
         "Intended Audience :: Science/Research",

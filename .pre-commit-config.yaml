@@ -8,11 +8,30 @@ repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v2.3.0
   hooks:
+    - id: check-merge-conflict
     - id: check-yaml
     - id: end-of-file-fixer
     - id: trailing-whitespace
-- repo: https://github.com/psf/black
-  rev: stable
+
+# run tests
+- repo: local
   hooks:
+    # formatting
     - id: black
-      language_version: python3
+      name: formatting (black)
+      entry: black .
+      stages: [push]
+      language: system
+    # tests
+    - id: tests
+      name: run tests
+      entry: green -vvv --run-coverage
+      language: system
+      types: [python]
+      stages: [push]
+    # typehints
+    # - id: mypy
+    #   name: typehints (mypy)
+    #   entry: mypy -v --exclude "setup\.(py|cfg)|(build|misc|bin|\.github)/$" .
+    #   language: system
+    #   #stages: [push]

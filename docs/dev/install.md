@@ -9,6 +9,8 @@ conda create --name odinson-ruleutils python=3.8 ipython
 source activate odinson-ruleutils
 # execute the following command from the project root:
 pip install -e ".[all]"
+# install the pre-commit hooks (as a convenience)
+pre-commit install -t pre-push
 ```
 
 `[all]` will include dependencies for running tests and generating the documentation.
