@@ -2156,7 +2156,7 @@ returns an empty list.</p></div>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.operands"><code class="name flex">
-<span>def <span class="ident">operands</span></span>(<span>self) ‑> list</span>
+<span>def <span class="ident">operands</span></span>(<span>self) ‑> list[str]</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -2173,7 +2173,7 @@ returns an empty list.</p></div>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.operators"><code class="name flex">
-<span>def <span class="ident">operators</span></span>(<span>self) ‑> list</span>
+<span>def <span class="ident">operators</span></span>(<span>self) ‑> list[str]</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -2186,7 +2186,7 @@ returns an empty list.</p></div>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.over_approximation"><code class="name flex">
-<span>def <span class="ident">over_approximation</span></span>(<span>self) ‑> Optional[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
+<span>def <span class="ident">over_approximation</span></span>(<span>self) ‑> Union[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>, NoneType]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns a rule with a language that contains all the languages
@@ -2361,7 +2361,7 @@ of the current node's descendents.</p></div>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryast.AstNode.under_approximation"><code class="name flex">
-<span>def <span class="ident">under_approximation</span></span>(<span>self) ‑> Optional[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
+<span>def <span class="ident">under_approximation</span></span>(<span>self) ‑> Union[<a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a>, NoneType]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns a rule with a language that is subsumed by the languages
