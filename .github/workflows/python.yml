@@ -69,7 +69,7 @@ jobs:
     # docs (API)
     - name: "Create documentation (API docs)"
       run: |
-        pdoc --html -c latex_math=True --force --output-dir docs/api clu
+        pdoc --html -c latex_math=True --force --output-dir docs/api odinson
     # docs (other)
     - name: "Create documentation (other)"
       run: |
