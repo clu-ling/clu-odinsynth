@@ -42,6 +42,7 @@ __all__ = [
     &#34;ExactMatcher&#34;,
     &#34;Constraint&#34;,
     &#34;HoleConstraint&#34;,
+    &#34;WildcardConstraint&#34;,
     &#34;FieldConstraint&#34;,
     &#34;NotConstraint&#34;,
     &#34;AndConstraint&#34;,
@@ -2666,7 +2667,7 @@ of all the descendents of the current node</p></div>
 <li><a title="odinson.ruleutils.queryast.HoleConstraint" href="#odinson.ruleutils.queryast.HoleConstraint">HoleConstraint</a></li>
 <li><a title="odinson.ruleutils.queryast.NotConstraint" href="#odinson.ruleutils.queryast.NotConstraint">NotConstraint</a></li>
 <li><a title="odinson.ruleutils.queryast.OrConstraint" href="#odinson.ruleutils.queryast.OrConstraint">OrConstraint</a></li>
-<li>odinson.ruleutils.queryast.WildcardConstraint</li>
+<li><a title="odinson.ruleutils.queryast.WildcardConstraint" href="#odinson.ruleutils.queryast.WildcardConstraint">WildcardConstraint</a></li>
 </ul>
 <h3>Inherited members</h3>
 <ul class="hlist">
@@ -4711,6 +4712,50 @@ of all the descendents of the current node</p></div>
 </li>
 </ul>
 </dd>
+<dt id="odinson.ruleutils.queryast.WildcardConstraint"><code class="flex name class">
+<span>class <span class="ident">WildcardConstraint</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>The base class for all token constraints.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class WildcardConstraint(Constraint):
+    def __str__(self):
+        # this should never be rendered
+        return &#34;???&#34;</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></li>
+<li><a title="odinson.ruleutils.queryast.AstNode" href="#odinson.ruleutils.queryast.AstNode">AstNode</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="odinson.ruleutils.queryast.Constraint" href="#odinson.ruleutils.queryast.Constraint">Constraint</a></b></code>:
+<ul class="hlist">
+<li><code><a title="odinson.ruleutils.queryast.Constraint.expand_leftmost_hole" href="#odinson.ruleutils.queryast.AstNode.expand_leftmost_hole">expand_leftmost_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.has_holes" href="#odinson.ruleutils.queryast.AstNode.has_holes">has_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_hole" href="#odinson.ruleutils.queryast.AstNode.is_hole">is_hole</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.is_valid" href="#odinson.ruleutils.queryast.AstNode.is_valid">is_valid</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_constraint_holes" href="#odinson.ruleutils.queryast.AstNode.num_constraint_holes">num_constraint_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_holes" href="#odinson.ruleutils.queryast.AstNode.num_holes">num_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_matcher_holes" href="#odinson.ruleutils.queryast.AstNode.num_matcher_holes">num_matcher_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_query_holes" href="#odinson.ruleutils.queryast.AstNode.num_query_holes">num_query_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_surface_holes" href="#odinson.ruleutils.queryast.AstNode.num_surface_holes">num_surface_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.num_traversal_holes" href="#odinson.ruleutils.queryast.AstNode.num_traversal_holes">num_traversal_holes</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.over_approximation" href="#odinson.ruleutils.queryast.AstNode.over_approximation">over_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.permutations" href="#odinson.ruleutils.queryast.AstNode.permutations">permutations</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.preorder_traversal" href="#odinson.ruleutils.queryast.AstNode.preorder_traversal">preorder_traversal</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.split" href="#odinson.ruleutils.queryast.AstNode.split">split</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.tokens" href="#odinson.ruleutils.queryast.AstNode.tokens">tokens</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.under_approximation" href="#odinson.ruleutils.queryast.AstNode.under_approximation">under_approximation</a></code></li>
+<li><code><a title="odinson.ruleutils.queryast.Constraint.unroll" href="#odinson.ruleutils.queryast.AstNode.unroll">unroll</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
 <dt id="odinson.ruleutils.queryast.WildcardSurface"><code class="flex name class">
 <span>class <span class="ident">WildcardSurface</span></span>
 </code></dt>
@@ -4958,6 +5003,9 @@ of all the descendents of the current node</p></div>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.Traversal" href="#odinson.ruleutils.queryast.Traversal">Traversal</a></code></h4>
+</li>
+<li>
+<h4><code><a title="odinson.ruleutils.queryast.WildcardConstraint" href="#odinson.ruleutils.queryast.WildcardConstraint">WildcardConstraint</a></code></h4>
 </li>
 <li>
 <h4><code><a title="odinson.ruleutils.queryast.WildcardSurface" href="#odinson.ruleutils.queryast.WildcardSurface">WildcardSurface</a></code></h4>
