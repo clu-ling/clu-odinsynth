@@ -13,6 +13,7 @@ __all__ = [
     "ExactMatcher",
     "Constraint",
     "HoleConstraint",
+    "WildcardConstraint",
     "FieldConstraint",
     "NotConstraint",
     "AndConstraint",
