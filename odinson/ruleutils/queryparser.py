@@ -218,7 +218,7 @@ def parse_odinson_query(pattern: Text) -> AstNode:
 
 def parse_surface(pattern: Text) -> Surface:
     """Gets a string and returns the corresponding surface pattern."""
-    or_surface.parseString(pattern)[0]
+    return or_surface.parseString(pattern)[0]
 
 
 def parse_traversal(pattern: Text) -> Traversal:
