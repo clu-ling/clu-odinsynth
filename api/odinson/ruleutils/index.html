@@ -86,7 +86,7 @@ except Exception as e:
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="odinson.ruleutils.all_paths_from_root"><code class="name flex">
-<span>def <span class="ident">all_paths_from_root</span></span>(<span>target: <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>, vocabularies: Optional[Dict[str, List[str]]] = None) ‑> List[List[<a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>]]</span>
+<span>def <span class="ident">all_paths_from_root</span></span>(<span>target: <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>, vocabularies: Union[Dict[str, List[str]], NoneType] = None) ‑> List[List[<a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>]]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns all episodes that render an equivalent rule to target.</p></div>
@@ -137,7 +137,7 @@ except Exception as e:
 </details>
 </dd>
 <dt id="odinson.ruleutils.path_from_root"><code class="name flex">
-<span>def <span class="ident">path_from_root</span></span>(<span>target: <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>, vocabularies: Optional[Dict[str, List[str]]] = None) ‑> List[<a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
+<span>def <span class="ident">path_from_root</span></span>(<span>target: <a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>, vocabularies: Union[Dict[str, List[str]], NoneType] = None) ‑> List[<a title="odinson.ruleutils.queryast.AstNode" href="queryast.html#odinson.ruleutils.queryast.AstNode">AstNode</a>]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns the sequence of transitions from the root of the search tree
