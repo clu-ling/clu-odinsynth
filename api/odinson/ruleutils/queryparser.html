@@ -247,7 +247,7 @@ def parse_odinson_query(pattern: Text) -&gt; AstNode:
 
 def parse_surface(pattern: Text) -&gt; Surface:
     &#34;&#34;&#34;Gets a string and returns the corresponding surface pattern.&#34;&#34;&#34;
-    or_surface.parseString(pattern)[0]
+    return or_surface.parseString(pattern)[0]
 
 
 def parse_traversal(pattern: Text) -&gt; Traversal:
@@ -287,7 +287,7 @@ def parse_traversal(pattern: Text) -&gt; Traversal:
 </summary>
 <pre><code class="python">def parse_surface(pattern: Text) -&gt; Surface:
     &#34;&#34;&#34;Gets a string and returns the corresponding surface pattern.&#34;&#34;&#34;
-    or_surface.parseString(pattern)[0]</code></pre>
+    return or_surface.parseString(pattern)[0]</code></pre>
 </details>
 </dd>
 <dt id="odinson.ruleutils.queryparser.parse_traversal"><code class="name flex">
