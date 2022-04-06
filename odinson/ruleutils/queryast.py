@@ -175,8 +175,10 @@ class AstNode:
 
     def preorder_traversal(self) -> List[AstNode]:
         """Returns a list with all the nodes of the tree in preorder."""
-        # default implementation is for nodes that have no children
-        return [self] + [c.preorder_traversal() for c in self.children()]
+        nodes = [self]
+        for child in self.children():
+            nodes += child.preorder_traversal()
+        return nodes
 
     def permutations(self) -> List[AstNode]:
         """Returns all trees that are equivalent to this AstNode."""
