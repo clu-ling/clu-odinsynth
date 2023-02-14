@@ -51,7 +51,7 @@ jobs:
     - name: "Install library (odinson-ruleutils)"
       #working-directory: ./
       run: |
-        pip install -e ".[all]"
+        pip install ".[all]"
     # Tests
     - name: "Tests and coverage (odinson-ruleutils)"
       run: |
