@@ -58,24 +58,28 @@ jobs:
         green -vvvv --run-coverage .
     # Type checks
     - name: "Type checks (odinson-ruleutils)"
+      if: ${{ matrix.python-version == '3.9' }}
       continue-on-error: true
       run: |
         mypy --install-types --non-interactive --ignore-missing-imports --follow-imports=skip --strict-optional --no-site-packages --exclude "^(build|misc)/$" .
     # code formatting and linting
     - name: "Code formatting & linting"
+      if: ${{ matrix.python-version == '3.9' }}
       continue-on-error: true
       run: |
         black --check .
     # docs (API)
     - name: "Create documentation (API docs)"
+      if: ${{ matrix.python-version == '3.9' }}
       run: |
         pdoc --html -c latex_math=True --force --output-dir docs/api odinson
     # docs (other)
     - name: "Create documentation (other)"
+      if: ${{ matrix.python-version == '3.9' }}
       run: |
         mkdocs build -c
     - name: Deploy docs
-      if: github.ref == 'refs/heads/main'
+      if: ${{ github.ref == 'refs/heads/main' && matrix.python-version == '3.9' }}
       uses: peaceiris/actions-gh-pages@v3
       with:
         # see https://docs.github.com/en/free-pro-team@latest/actions/reference/authentication-in-a-workflow#about-the-github_token-secret
