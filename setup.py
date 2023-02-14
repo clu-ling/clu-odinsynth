@@ -16,10 +16,11 @@ test_deps = required + ["green>=2.5.0", "coverage", "mypy"]
 dev_deps = test_deps + [
     "black",
     "mkdocs==1.2.1",
+    "jinja2==3.0.3",
     # "portray @ git+git://github.com/myedibleenso/portray.git@issue/83",
     # "portray @ git+git://github.com/myedibleenso/portray.git@avoid-regressions",
     # "mkapi==1.0.14",
-    "pdoc3==0.9.2",
+    "pdoc3==0.10.0",
     "mkdocs-git-snippet==0.1.1",
     "mkdocs-git-revision-date-localized-plugin==0.9.2",
     "mkdocs-git-authors-plugin==0.3.3",
