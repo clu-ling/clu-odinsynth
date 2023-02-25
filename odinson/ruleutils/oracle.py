@@ -1,7 +1,9 @@
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Dict, Optional, List
 from odinson.ruleutils.queryast import *
 from odinson.ruleutils.config import Vocabularies, ENTITY_FIELD, SYNTAX_FIELD
+from odinson.ruleutils.queryast import GenerationRule
 
 
 def make_transition_table(paths):
@@ -14,7 +16,7 @@ def make_transition_table(paths):
 
 
 def all_paths_from_root(
-    target: AstNode, vocabularies: Optional[Vocabularies] = None
+        target: AstNode, vocabularies: Optional[Vocabularies] = None
 ) -> List[List[AstNode]]:
     """Returns all episodes that render an equivalent rule to target."""
     results = []
@@ -24,7 +26,7 @@ def all_paths_from_root(
 
 
 def path_from_root(
-    target: AstNode, vocabularies: Optional[Vocabularies] = None
+        target: AstNode, vocabularies: Optional[Vocabularies] = None
 ) -> List[AstNode]:
     """
     Returns the sequence of transitions from the root of the search tree
@@ -48,16 +50,21 @@ def path_from_root(
     return list(oracle.traversal())
 
 
+
 class Oracle:
-    def __init__(self, src: AstNode, dst: AstNode, vocabularies: Vocabularies):
+    def __init__(self, src: AstNode, dst: AstNode, vocabularies: Vocabularies, track_generations: bool = True):
         self.src = src
         self.dst = dst
         self.vocabularies = vocabularies
+        self._track_generations = track_generations
         # find traversal corresponding to dst node
         self.dst_traversal = self.dst.preorder_traversal()
 
     def traversal(self):
         current = self.src
+        if self._track_generations:
+            rule = GenerationRule(dst=current)
+            current.generating_rule = rule
         while current is not None:
             yield current
             if current == self.dst:
@@ -76,7 +83,7 @@ class Oracle:
         if hole_position < 0:
             return
         # consider all possible candidates
-        for candidate in current.expand_leftmost_hole(self.vocabularies):
+        for candidate in current.expand_leftmost_hole(self.vocabularies, track_generations=self._track_generations):
             traversal = candidate.preorder_traversal()
             n1 = traversal[hole_position]
             n2 = self.dst_traversal[hole_position]

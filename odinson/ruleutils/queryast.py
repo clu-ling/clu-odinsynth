@@ -1,8 +1,11 @@
 from __future__ import annotations
+
+import itertools
 import json
 import math
-import itertools
+from dataclasses import dataclass
 from typing import List, Text, Optional, Tuple, Type, Union
+
 from odinson.ruleutils import config
 
 __all__ = [
@@ -44,13 +47,10 @@ __all__ = [
     "HybridQuery",
 ]
 
-
 # type alias
 Vocabularies = config.Vocabularies
 
-
 OPERATORS_TO_EXCLUDE = {"]", ")", "}"}
-
 
 OPERATORS = {
     "[",
@@ -70,6 +70,29 @@ OPERATORS = {
     ">>",
     "<<",
 }
+
+
+@dataclass
+class GenerationRule:
+    """ Represents a generation rule of the Odinson grammar """
+    dst: AstNode
+    src: Optional[AstNode] = None  # None in case of the root
+    _delexicalized: AstNode = None
+
+    @property
+    def delexicalized(self):
+        if not self._delexicalized:
+            if type(self.dst) == FieldConstraint and type(self.dst.value) == ExactMatcher:
+                self._delexicalized = GenerationRule(src=self.src, dst=FieldConstraint(name=self.dst.name, value=ExactMatcher("###")))
+            else:
+                self._delexicalized = self
+        return self._delexicalized
+
+    def __repr__(self):
+        if self.src:
+            return f"{self.src}\t->\t{self.dst}"
+        else:
+            return f"{self.dst}"
 
 
 class CognitiveWeight:
@@ -95,6 +118,14 @@ class CognitiveWeight:
 
 class AstNode:
     """The base class for all AST nodes."""
+
+    def __init__(self):
+        self.generating_rule = None
+        for child in self.children():
+            if child.generating_rule:
+                self.generating_rule = child.generating_rule
+                child.generating_rule = None
+        super().__init__()
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {str(self)!r}>"
@@ -155,15 +186,15 @@ class AstNode:
     def num_holes(self) -> int:
         """Returns the number of holes in this pattern."""
         return (
-            self.num_matcher_holes()
-            + self.num_constraint_holes()
-            + self.num_surface_holes()
-            + self.num_traversal_holes()
-            + self.num_query_holes()
+                self.num_matcher_holes()
+                + self.num_constraint_holes()
+                + self.num_surface_holes()
+                + self.num_traversal_holes()
+                + self.num_query_holes()
         )
 
     def expand_leftmost_hole(
-        self, vocabularies: Vocabularies, **kwargs
+            self, vocabularies: Vocabularies, **kwargs
     ) -> List[AstNode]:
         """
         If the pattern has holes then it returns the patterns obtained
@@ -179,6 +210,15 @@ class AstNode:
         for child in self.children():
             nodes += child.preorder_traversal()
         return nodes
+
+    # @property
+    # @lru_cache
+    # def leftmost_hole(self) -> Optional[AstNode]:
+    #     """ Returns the leftmust hole in the subtree, if any """
+    #     for node in self.preorder_traversal():
+    #         if node.is_hole():
+    #             return node
+    #     return
 
     def permutations(self) -> List[AstNode]:
         """Returns all trees that are equivalent to this AstNode."""
@@ -416,6 +456,7 @@ class WildcardMatcher(Matcher):
 class ExactMatcher(Matcher):
     def __init__(self, s: Text):
         self.string = s
+        super().__init__()
 
     def __str__(self):
         if is_identifier(self.string):
@@ -454,12 +495,16 @@ class HoleConstraint(Constraint):
         return 1
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
-        return [
+        candidates = [
             FieldConstraint(HoleMatcher(), HoleMatcher()),
             NotConstraint(HoleConstraint()),
             AndConstraint(HoleConstraint(), HoleConstraint()),
             OrConstraint(HoleConstraint(), HoleConstraint()),
         ]
+        if kwargs.get("track_generation", True):
+            for c in candidates:
+                c.generating_rule = GenerationRule(src=self, dst=c)
+        return candidates
 
     def over_approximation(self):
         return WildcardConstraint()
@@ -474,6 +519,7 @@ class FieldConstraint(Constraint):
     def __init__(self, name: Matcher, value: Matcher):
         self.name = name
         self.value = value
+        super().__init__()
 
     def __str__(self):
         return f"{self.name}={self.value}"
@@ -485,19 +531,22 @@ class FieldConstraint(Constraint):
         return self.name.tokens() + ["="] + self.value.tokens()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
+        candidates = []
         if self.name.is_hole():
-            return [
+            candidates = [
                 FieldConstraint(ExactMatcher(name), self.value)
                 for name in vocabularies
                 if name not in config.EXCLUDE_FIELDS
             ]
         elif self.value.is_hole():
-            return [
+            candidates = [
                 FieldConstraint(self.name, ExactMatcher(value))
                 for value in vocabularies[self.name.string]
             ]
-        else:
-            return []
+        if kwargs.get("track_generations", False):
+            for c in candidates:
+                c.generating_rule = GenerationRule(src=self, dst=c)
+        return candidates
 
     def over_approximation(self):
         name = self.name.over_approximation()
@@ -531,6 +580,7 @@ class NotConstraint(Constraint):
 
     def __init__(self, c: Constraint):
         self.constraint = c
+        super().__init__()
 
     def __str__(self):
         c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
@@ -576,6 +626,7 @@ class AndConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         return f"{self.lhs} & {self.rhs}"
@@ -632,6 +683,7 @@ class OrConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
@@ -691,6 +743,7 @@ class Surface(AstNode):
 
 
 class HoleSurface(Surface):
+
     def __str__(self):
         return config.SURFACE_HOLE_GLYPH
 
@@ -707,8 +760,8 @@ class HoleSurface(Surface):
         if kwargs.get("allow_surface_wildcards", True):
             candidates.append(WildcardSurface())
         if (
-            kwargs.get("allow_surface_mentions", True)
-            and config.ENTITY_FIELD in vocabularies
+                kwargs.get("allow_surface_mentions", True)
+                and config.ENTITY_FIELD in vocabularies
         ):
             candidates.append(MentionSurface(HoleMatcher()))
         if kwargs.get("allow_surface_alternations", True):
@@ -721,6 +774,9 @@ class HoleSurface(Surface):
                 RepeatSurface(HoleSurface(), 0, None),
                 RepeatSurface(HoleSurface(), 1, None),
             ]
+        if kwargs.get("track_generations", True):
+            for c in candidates:
+                c.generating_rule = GenerationRule(src=self, dst=c)
         return candidates
 
     def over_approximation(self):
@@ -745,6 +801,7 @@ class TokenSurface(Surface):
 
     def __init__(self, c: Constraint):
         self.constraint = c
+        super().__init__()
 
     def __str__(self):
         return f"[{self.constraint}]"
@@ -790,6 +847,7 @@ class MentionSurface(Surface):
 
     def __init__(self, label: Matcher):
         self.label = label
+        super().__init__()
 
     def __str__(self):
         return f"@{self.label}"
@@ -802,7 +860,11 @@ class MentionSurface(Surface):
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         entities = vocabularies.get(config.ENTITY_FIELD, [])
-        return [MentionSurface(ExactMatcher(e)) for e in entities]
+        candidates = [MentionSurface(ExactMatcher(e)) for e in entities]
+        if kwargs.get("track_generations", True):
+            for c in candidates:
+                c.generating_rule = GenerationRule(src=self, dst=c)
+        return candidates
 
 
 class ConcatSurface(Surface):
@@ -811,6 +873,7 @@ class ConcatSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         lhs = maybe_parens(self.lhs, OrSurface)
@@ -827,14 +890,14 @@ class ConcatSurface(Surface):
         return tokens
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
+        candidates = []
         if self.lhs.has_holes():
             nodes = self.lhs.expand_leftmost_hole(vocabularies, **kwargs)
-            return [ConcatSurface(n, self.rhs) for n in nodes]
+            candidates = [ConcatSurface(n, self.rhs) for n in nodes]
         elif self.rhs.has_holes():
             nodes = self.rhs.expand_leftmost_hole(vocabularies, **kwargs)
-            return [ConcatSurface(self.lhs, n) for n in nodes]
-        else:
-            return []
+            candidates = [ConcatSurface(self.lhs, n) for n in nodes]
+        return candidates
 
     def permutations(self):
         return get_all_trees(self)
@@ -875,6 +938,7 @@ class OrSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
@@ -930,6 +994,7 @@ class RepeatSurface(Surface):
         self.surf = surf
         self.min = min
         self.max = max
+        super().__init__()
 
     def __str__(self):
         surf = maybe_parens(self.surf, (ConcatSurface, OrSurface))
@@ -1019,6 +1084,9 @@ class HoleTraversal(Traversal):
                 RepeatTraversal(HoleTraversal(), 0, None),
                 RepeatTraversal(HoleTraversal(), 1, None),
             ]
+        if kwargs.get("track_generation", True):
+            for c in candidates:
+                c.generating_rule = GenerationRule(src=self, dst=c)
         return candidates
 
     def over_approximation(self):
@@ -1051,6 +1119,7 @@ class IncomingLabelTraversal(Traversal):
 
     def __init__(self, label: Matcher):
         self.label = label
+        super().__init__()
 
     def __str__(self):
         return f"<{self.label}"
@@ -1092,6 +1161,7 @@ class OutgoingLabelTraversal(Traversal):
 
     def __init__(self, label: Matcher):
         self.label = label
+        super().__init__()
 
     def __str__(self):
         return f">{self.label}"
@@ -1134,6 +1204,7 @@ class ConcatTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         lhs = maybe_parens(self.lhs, OrTraversal)
@@ -1198,6 +1269,7 @@ class OrTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
@@ -1253,6 +1325,7 @@ class RepeatTraversal(Traversal):
         self.traversal = traversal
         self.min = min
         self.max = max
+        super().__init__()
 
     def __str__(self):
         traversal = maybe_parens(self.traversal, (ConcatTraversal, OrTraversal))
@@ -1325,10 +1398,14 @@ class HoleQuery(Query):
         return 1
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
-        return [
+        candidates = [
             HoleSurface(),
             HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
         ]
+        if kwargs.get("track_generation", True):
+            for c in candidates:
+                c.generating_rule = GenerationRule(src=self, dst=c)
+        return candidates
 
     def over_approximation(self):
         raise NotImplementedError()
@@ -1344,6 +1421,7 @@ class HybridQuery(Query):
         self.src = src
         self.dst = dst
         self.traversal = traversal
+        super().__init__()
 
     def __str__(self):
         src = maybe_parens(self.src, OrSurface)
