@@ -73,7 +73,7 @@ OPERATORS = {
 
 
 @dataclass
-class GenerationRule:
+class ProductionRule:
     """ Represents a generation rule of the Odinson grammar """
     dst: AstNode
     src: Optional[AstNode] = None  # None in case of the root
@@ -83,7 +83,7 @@ class GenerationRule:
     def delexicalized(self):
         if not self._delexicalized:
             if type(self.dst) == FieldConstraint and type(self.dst.value) == ExactMatcher:
-                self._delexicalized = GenerationRule(src=self.src, dst=FieldConstraint(name=self.dst.name, value=ExactMatcher("###")))
+                self._delexicalized = ProductionRule(src=self.src, dst=FieldConstraint(name=self.dst.name, value=ExactMatcher("###")))
             else:
                 self._delexicalized = self
         return self._delexicalized
@@ -503,7 +503,7 @@ class HoleConstraint(Constraint):
         ]
         if kwargs.get("track_generation", True):
             for c in candidates:
-                c.generating_rule = GenerationRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c)
         return candidates
 
     def over_approximation(self):
@@ -543,9 +543,9 @@ class FieldConstraint(Constraint):
                 FieldConstraint(self.name, ExactMatcher(value))
                 for value in vocabularies[self.name.string]
             ]
-        if kwargs.get("track_generations", False):
+        if kwargs.get("track_productions", False):
             for c in candidates:
-                c.generating_rule = GenerationRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c)
         return candidates
 
     def over_approximation(self):
@@ -774,9 +774,9 @@ class HoleSurface(Surface):
                 RepeatSurface(HoleSurface(), 0, None),
                 RepeatSurface(HoleSurface(), 1, None),
             ]
-        if kwargs.get("track_generations", True):
+        if kwargs.get("track_productions", False):
             for c in candidates:
-                c.generating_rule = GenerationRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c)
         return candidates
 
     def over_approximation(self):
@@ -861,9 +861,9 @@ class MentionSurface(Surface):
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         entities = vocabularies.get(config.ENTITY_FIELD, [])
         candidates = [MentionSurface(ExactMatcher(e)) for e in entities]
-        if kwargs.get("track_generations", True):
+        if kwargs.get("track_productions", False):
             for c in candidates:
-                c.generating_rule = GenerationRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c)
         return candidates
 
 
@@ -1086,7 +1086,7 @@ class HoleTraversal(Traversal):
             ]
         if kwargs.get("track_generation", True):
             for c in candidates:
-                c.generating_rule = GenerationRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c)
         return candidates
 
     def over_approximation(self):
@@ -1404,7 +1404,7 @@ class HoleQuery(Query):
         ]
         if kwargs.get("track_generation", True):
             for c in candidates:
-                c.generating_rule = GenerationRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c)
         return candidates
 
     def over_approximation(self):

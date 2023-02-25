@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional, List
 from odinson.ruleutils.queryast import *
 from odinson.ruleutils.config import Vocabularies, ENTITY_FIELD, SYNTAX_FIELD
-from odinson.ruleutils.queryast import GenerationRule
+from odinson.ruleutils.queryast import ProductionRule
 
 
 def make_transition_table(paths):
@@ -63,7 +63,7 @@ class Oracle:
     def traversal(self):
         current = self.src
         if self._track_generations:
-            rule = GenerationRule(dst=current)
+            rule = ProductionRule(dst=current)
             current.generating_rule = rule
         while current is not None:
             yield current
@@ -83,7 +83,7 @@ class Oracle:
         if hole_position < 0:
             return
         # consider all possible candidates
-        for candidate in current.expand_leftmost_hole(self.vocabularies, track_generations=self._track_generations):
+        for candidate in current.expand_leftmost_hole(self.vocabularies, track_productions=self._track_generations):
             traversal = candidate.preorder_traversal()
             n1 = traversal[hole_position]
             n2 = self.dst_traversal[hole_position]
