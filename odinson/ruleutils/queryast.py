@@ -4,7 +4,7 @@ import itertools
 import json
 import math
 from dataclasses import dataclass
-from typing import List, Text, Optional, Tuple, Type, Union
+from typing import List, Text, Optional, Tuple, Type, Union, cast
 
 from odinson.ruleutils import config
 
@@ -77,13 +77,16 @@ class ProductionRule:
     """ Represents a generation rule of the Odinson grammar """
     dst: AstNode
     src: Optional[AstNode] = None  # None in case of the root
-    _delexicalized: AstNode = None
+    _delexicalized: ProductionRule = None
 
     @property
     def delexicalized(self):
         if not self._delexicalized:
-            if type(self.dst) == FieldConstraint and type(self.dst.value) == ExactMatcher:
-                self._delexicalized = ProductionRule(src=self.src, dst=FieldConstraint(name=self.dst.name, value=ExactMatcher("###")))
+            if type(self.dst) == FieldConstraint \
+                    and type(cast(FieldConstraint, self.dst).value) == ExactMatcher\
+                    and cast(FieldConstraint, self.src).name.string not in {"tag", }:
+                self._delexicalized = ProductionRule(src=self.src,
+                                                     dst=FieldConstraint(name=self.dst.name, value=ExactMatcher("###")))
             else:
                 self._delexicalized = self
         return self._delexicalized
