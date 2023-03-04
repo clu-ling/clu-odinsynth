@@ -63,7 +63,7 @@ class Oracle:
     def traversal(self):
         current = self.src
         if self._track_generations:
-            rule = ProductionRule(dst=current)
+            rule = ProductionRule(dst=current, innermost_substitution=current)
             current.generating_rule = rule
         while current is not None:
             yield current

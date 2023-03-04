@@ -76,6 +76,7 @@ OPERATORS = {
 class ProductionRule:
     """ Represents a generation rule of the Odinson grammar """
     dst: AstNode
+    innermost_substitution: AstNode
     src: Optional[AstNode] = None  # None in case of the root
     _delexicalized: ProductionRule = None
 
@@ -86,7 +87,8 @@ class ProductionRule:
                     and type(cast(FieldConstraint, self.dst).value) == ExactMatcher\
                     and cast(FieldConstraint, self.src).name.string not in {"tag", }:
                 self._delexicalized = ProductionRule(src=self.src,
-                                                     dst=FieldConstraint(name=self.dst.name, value=ExactMatcher("###")))
+                                                     dst=FieldConstraint(name=self.dst.name, value=ExactMatcher("###")),
+                                                     innermost_substitution=self.innermost_substitution)
             else:
                 self._delexicalized = self
         return self._delexicalized
@@ -506,7 +508,7 @@ class HoleConstraint(Constraint):
         ]
         if kwargs.get("track_generation", True):
             for c in candidates:
-                c.generating_rule = ProductionRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c)
         return candidates
 
     def over_approximation(self):
@@ -536,19 +538,19 @@ class FieldConstraint(Constraint):
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         candidates = []
         if self.name.is_hole():
-            candidates = [
-                FieldConstraint(ExactMatcher(name), self.value)
-                for name in vocabularies
-                if name not in config.EXCLUDE_FIELDS
-            ]
+            for name in vocabularies:
+                if name not in config.EXCLUDE_FIELDS:
+                    c = FieldConstraint(ExactMatcher(name), self.value)
+                    candidates.append(c)
+                    if kwargs.get("track_productions", False):
+                        c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c.name)
+
         elif self.value.is_hole():
-            candidates = [
-                FieldConstraint(self.name, ExactMatcher(value))
-                for value in vocabularies[self.name.string]
-            ]
-        if kwargs.get("track_productions", False):
-            for c in candidates:
-                c.generating_rule = ProductionRule(src=self, dst=c)
+            for value in vocabularies[self.name.string]:
+                c = FieldConstraint(self.name, ExactMatcher(value))
+                candidates.append(c)
+                if kwargs.get("track_productions", False):
+                    c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=ExactMatcher(value))
         return candidates
 
     def over_approximation(self):
@@ -779,7 +781,7 @@ class HoleSurface(Surface):
             ]
         if kwargs.get("track_productions", False):
             for c in candidates:
-                c.generating_rule = ProductionRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c)
         return candidates
 
     def over_approximation(self):
@@ -866,7 +868,7 @@ class MentionSurface(Surface):
         candidates = [MentionSurface(ExactMatcher(e)) for e in entities]
         if kwargs.get("track_productions", False):
             for c in candidates:
-                c.generating_rule = ProductionRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c.label)
         return candidates
 
 
@@ -1089,7 +1091,7 @@ class HoleTraversal(Traversal):
             ]
         if kwargs.get("track_generation", True):
             for c in candidates:
-                c.generating_rule = ProductionRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c)
         return candidates
 
     def over_approximation(self):
@@ -1407,7 +1409,7 @@ class HoleQuery(Query):
         ]
         if kwargs.get("track_generation", True):
             for c in candidates:
-                c.generating_rule = ProductionRule(src=self, dst=c)
+                c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c)
         return candidates
 
     def over_approximation(self):
