@@ -6,6 +6,8 @@ import math
 from dataclasses import dataclass
 from typing import List, Text, Optional, Tuple, Type, Union, cast
 
+from black.comments import lru_cache
+
 from odinson.ruleutils import config
 
 __all__ = [
@@ -88,7 +90,7 @@ class ProductionRule:
                     and cast(FieldConstraint, self.src).name.string not in {"tag", }:
                 self._delexicalized = ProductionRule(src=self.src,
                                                      dst=FieldConstraint(name=self.dst.name, value=ExactMatcher("###")),
-                                                     innermost_substitution=self.innermost_substitution)
+                                                     innermost_substitution=ExactMatcher("###"))
             else:
                 self._delexicalized = self
         return self._delexicalized
@@ -216,14 +218,13 @@ class AstNode:
             nodes += child.preorder_traversal()
         return nodes
 
-    # @property
-    # @lru_cache
-    # def leftmost_hole(self) -> Optional[AstNode]:
-    #     """ Returns the leftmust hole in the subtree, if any """
-    #     for node in self.preorder_traversal():
-    #         if node.is_hole():
-    #             return node
-    #     return
+    @property
+    def leftmost_hole(self) -> Optional[AstNode]:
+        """ Returns the leftmust hole in the subtree, if any """
+        for node in self.preorder_traversal():
+            if node.is_hole():
+                return node
+        return
 
     def permutations(self) -> List[AstNode]:
         """Returns all trees that are equivalent to this AstNode."""
