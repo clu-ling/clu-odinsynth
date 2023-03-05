@@ -226,7 +226,7 @@ def parse_traversal(pattern: Text) -> Traversal:
     return or_traversal.parseString(pattern)[0]
 
 
-def parse_innermost_substitution(s):
+def parse_innermost_substitution(s: Text):
     """Gets a string and returns the corresponding AstNode element"""
     if s == "\u25a1=\u25a1":
         ins = FieldConstraint(HoleMatcher(), HoleMatcher())
@@ -234,5 +234,5 @@ def parse_innermost_substitution(s):
         try:
             ins = parse_odinson_query(s)
         except ParseException:
-            ins = ExactMatcher(s)
+            ins = ExactMatcher(s.strip("\""))
     return ins

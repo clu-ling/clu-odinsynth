@@ -211,6 +211,11 @@ class AstNode:
         # default implementation is suitable for Matchers only
         return []
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        return self
+
     def preorder_traversal(self) -> List[AstNode]:
         """Returns a list with all the nodes of the tree in preorder."""
         nodes = [self]
@@ -452,6 +457,11 @@ class HoleMatcher(Matcher):
     def under_approximation(self):
         return None
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        return substitution
+
 
 class WildcardMatcher(Matcher):
     def __str__(self):
@@ -512,6 +522,11 @@ class HoleConstraint(Constraint):
                 c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c)
         return candidates
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        return substitution
+
     def over_approximation(self):
         return WildcardConstraint()
 
@@ -553,6 +568,16 @@ class FieldConstraint(Constraint):
                 if kwargs.get("track_productions", False):
                     c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=ExactMatcher(value))
         return candidates
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.name.has_holes():
+            return FieldConstraint(name=self.name.fill_leftmost_hole(substitution), value=self.value)
+        elif self.value.has_holes():
+            return FieldConstraint(name=self.name, value=self.value.fill_leftmost_hole(substitution))
+        else:
+            return self
 
     def over_approximation(self):
         name = self.name.over_approximation()
@@ -603,8 +628,14 @@ class NotConstraint(Constraint):
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         # get the next nodes for the nested constraint
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
-        # avoid nesting negations
-        return [NotConstraint(n) for n in nodes if not isinstance(n, NotConstraint)]
+        candidates = []
+        for n in nodes:
+            # avoid nesting negations
+            if not isinstance(n, NotConstraint):
+                c = NotConstraint(n)
+                if kwargs.get("track_productions", False):
+                    c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=n)
+        return candidates
 
     def permutations(self):
         return [NotConstraint(p) for p in self.constraint.permutations()]
@@ -785,6 +816,10 @@ class HoleSurface(Surface):
                 c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c)
         return candidates
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        return substitution
     def over_approximation(self):
         return RepeatSurface(WildcardSurface(), 0, None)
 
@@ -821,6 +856,14 @@ class TokenSurface(Surface):
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         return [TokenSurface(n) for n in nodes]
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.constraint.has_holes():
+            return TokenSurface(self.constraint.fill_leftmost_hole(substitution))
+        else:
+            return self
 
     def permutations(self):
         return [TokenSurface(p) for p in self.constraint.permutations()]
@@ -905,6 +948,16 @@ class ConcatSurface(Surface):
             candidates = [ConcatSurface(self.lhs, n) for n in nodes]
         return candidates
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.lhs.has_holes():
+            return ConcatSurface(self.lhs.fill_leftmost_hole(substitution), self.rhs)
+        elif self.rhs.has_holes():
+            return ConcatSurface(self.lhs, self.rhs.fill_leftmost_hole(substitution))
+        else:
+            return self
+
     def permutations(self):
         return get_all_trees(self)
 
@@ -965,6 +1018,16 @@ class OrSurface(Surface):
         else:
             return []
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.lhs.has_holes():
+            return OrSurface(self.lhs.fill_leftmost_hole(substitution), self.rhs)
+        elif self.rhs.has_holes():
+            return OrSurface(self.lhs, self.rhs.fill_leftmost_hole(substitution))
+        else:
+            return self
+
     def permutations(self):
         return get_all_trees(self)
 
@@ -1024,6 +1087,12 @@ class RepeatSurface(Surface):
         # avoid nesting repetitions
         nodes = [n for n in nodes if not isinstance(n, RepeatSurface)]
         return [RepeatSurface(n, self.min, self.max) for n in nodes]
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.surf.has_holes():
+            return RepeatSurface(self.surf.fill_leftmost_hole(substitution), self.min, self.max)
 
     def permutations(self):
         return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]
