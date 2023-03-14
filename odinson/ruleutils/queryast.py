@@ -6,8 +6,6 @@ import math
 from dataclasses import dataclass
 from typing import List, Text, Optional, Tuple, Type, Union, cast
 
-from black.comments import lru_cache
-
 from odinson.ruleutils import config
 
 __all__ = [
@@ -749,6 +747,16 @@ class OrConstraint(Constraint):
             return [OrConstraint(self.lhs, n) for n in nodes]
         else:
             return []
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.lhs.has_holes():
+            return OrConstraint(self.lhs.fill_leftmost_hole(substitution), self.rhs)
+        elif self.rhs.has_holes():
+            return OrConstraint(self.lhs, self.rhs.fill_leftmost_hole(substitution))
+        else:
+            return self
 
     def permutations(self):
         return get_all_trees(self)
