@@ -559,14 +559,14 @@ class FieldConstraint(Constraint):
                     c = FieldConstraint(ExactMatcher(name), self.value)
                     candidates.append(c)
                     if kwargs.get("track_productions", False):
-                        c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c.name)
+                        c.generating_rule = ProductionRule(src=self.name, dst=c.name, innermost_substitution=c.name)
 
         elif self.value.is_hole():
             for value in vocabularies[self.name.string]:
                 c = FieldConstraint(self.name, ExactMatcher(value))
                 candidates.append(c)
                 if kwargs.get("track_productions", False):
-                    c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=ExactMatcher(value))
+                    c.generating_rule = ProductionRule(src=self.value, dst=c.value, innermost_substitution=c.value)
         return candidates
 
     def fill_leftmost_hole(
@@ -625,6 +625,14 @@ class NotConstraint(Constraint):
             self.constraint, (AndConstraint, OrConstraint)
         )
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.has_holes():
+            return NotConstraint(c=self.constraint.fill_leftmost_hole(substitution))
+        else:
+            return self
+
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         # get the next nodes for the nested constraint
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
@@ -633,8 +641,9 @@ class NotConstraint(Constraint):
             # avoid nesting negations
             if not isinstance(n, NotConstraint):
                 c = NotConstraint(n)
-                if kwargs.get("track_productions", False):
-                    c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=n)
+                candidates.append(c)
+                # if kwargs.get("track_productions", False):
+                #     c.generating_rule = ProductionRule(src=self.constraint, dst=n, innermost_substitution=n)
         return candidates
 
     def permutations(self):

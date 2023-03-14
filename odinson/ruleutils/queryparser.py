@@ -230,6 +230,14 @@ def parse_innermost_substitution(s: Text):
     """Gets a string and returns the corresponding AstNode element"""
     if s == "\u25a1=\u25a1":
         ins = FieldConstraint(HoleMatcher(), HoleMatcher())
+    elif s == "!\u25a1":
+        ins = NotConstraint(HoleConstraint())
+    # elif s.endswith("=\u25a1"):
+    #     lhs = s.split("=")[0]
+    #     ins = FieldConstraint(ExactMatcher(lhs), HoleMatcher())
+    # elif "=" in s:
+    #     lhs, rhs = s.split("=")
+    #     ins = FieldConstraint(ExactMatcher(lhs), ExactMatcher(rhs))
     else:
         try:
             ins = parse_odinson_query(s)
