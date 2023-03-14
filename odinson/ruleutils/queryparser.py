@@ -238,6 +238,8 @@ def parse_innermost_substitution(s: Text, container = None):
         except ParseException:
             if s == '"\\""':
                 ins = ExactMatcher('\"')
+            elif s == '"\\\\"':
+                ins = ExactMatcher('\\')
             else:
                 ins = ExactMatcher(s.strip("\""))
 
