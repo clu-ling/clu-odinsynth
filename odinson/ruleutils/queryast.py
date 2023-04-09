@@ -83,11 +83,10 @@ class ProductionRule:
     @property
     def delexicalized(self):
         if not self._delexicalized:
-            if type(self.dst) == FieldConstraint \
-                    and type(cast(FieldConstraint, self.dst).value) == ExactMatcher\
-                    and cast(FieldConstraint, self.src).name.string not in {"tag", }:
+            if type(self.dst) == ExactMatcher \
+                    and self.dst.string not in {"tag", "lemma", "word", "raw"}:
                 self._delexicalized = ProductionRule(src=self.src,
-                                                     dst=FieldConstraint(name=self.dst.name, value=ExactMatcher("###")),
+                                                     dst=ExactMatcher("###"),
                                                      innermost_substitution=ExactMatcher("###"))
             else:
                 self._delexicalized = self
