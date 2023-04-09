@@ -49,7 +49,7 @@ quant_range_neither = open_curly + comma + close_curly
 quant_range_neither.setParseAction(lambda t: (0, None))
 # range {n,m}
 quant_range = (
-    quant_range_left | quant_range_right | quant_range_both | quant_range_neither
+        quant_range_left | quant_range_right | quant_range_both | quant_range_neither
 )
 # repetition {n}
 quant_rep = open_curly + number + close_curly
@@ -83,7 +83,7 @@ or_constraint = Forward()
 
 # an expression that represents a single constraint
 atomic_constraint = (
-    field_constraint | hole_constraint | open_parens + or_constraint + close_parens
+        field_constraint | hole_constraint | open_parens + or_constraint + close_parens
 )
 
 # a constraint that may or may not be negated
@@ -122,10 +122,10 @@ mention_surface.setParseAction(lambda t: MentionSurface(t[0]))
 
 # an expression that represents a single query
 atomic_surface = (
-    hole_surface
-    | token_surface
-    | mention_surface
-    | open_parens + or_surface + close_parens
+        hole_surface
+        | token_surface
+        | mention_surface
+        | open_parens + or_surface + close_parens
 )
 
 # a query with an optional quantifier
@@ -173,10 +173,10 @@ or_traversal = Forward()
 
 # an expression that represents a single traversal
 atomic_traversal = (
-    hole_traversal
-    | incoming_traversal
-    | outgoing_traversal
-    | open_parens + or_traversal + close_parens
+        hole_traversal
+        | incoming_traversal
+        | outgoing_traversal
+        | open_parens + or_traversal + close_parens
 )
 
 # a traversal with an optional quantifier
@@ -224,3 +224,26 @@ def parse_surface(pattern: Text) -> Surface:
 def parse_traversal(pattern: Text) -> Traversal:
     """Gets a string and returns the corresponding graph traversal."""
     return or_traversal.parseString(pattern)[0]
+
+
+def parse_innermost_substitution(s: Text, container = None):
+    """Gets a string and returns the corresponding AstNode element"""
+    if s == "\u25a1=\u25a1":
+        ins = FieldConstraint(HoleMatcher(), HoleMatcher())
+    elif s == "!\u25a1":
+        ins = NotConstraint(HoleConstraint())
+    else:
+        try:
+            ins = parse_odinson_query(s)
+        except ParseException:
+            if s == '"\\""':
+                ins = ExactMatcher('\"')
+            elif s == '"\\\\"':
+                ins = ExactMatcher('\\')
+            else:
+                ins = ExactMatcher(s.strip("\""))
+
+    # Fix or constraints
+    if container and isinstance(container, Constraint) and type(ins) == OrSurface:
+        ins = OrConstraint(lhs=ins.lhs, rhs=ins.rhs)
+    return ins

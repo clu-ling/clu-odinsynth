@@ -1,8 +1,11 @@
 from __future__ import annotations
+
+import itertools
 import json
 import math
-import itertools
-from typing import List, Text, Optional, Tuple, Type, Union
+from dataclasses import dataclass
+from typing import List, Text, Optional, Tuple, Type, Union, cast
+
 from odinson.ruleutils import config
 
 __all__ = [
@@ -44,13 +47,10 @@ __all__ = [
     "HybridQuery",
 ]
 
-
 # type alias
 Vocabularies = config.Vocabularies
 
-
 OPERATORS_TO_EXCLUDE = {"]", ")", "}"}
-
 
 OPERATORS = {
     "[",
@@ -70,6 +70,33 @@ OPERATORS = {
     ">>",
     "<<",
 }
+
+
+@dataclass
+class ProductionRule:
+    """ Represents a generation rule of the Odinson grammar """
+    dst: AstNode
+    innermost_substitution: AstNode
+    src: Optional[AstNode] = None  # None in case of the root
+    _delexicalized: ProductionRule = None
+
+    @property
+    def delexicalized(self):
+        if not self._delexicalized:
+            if type(self.dst) == ExactMatcher \
+                    and self.dst.string not in {"tag", "lemma", "word", "raw"}:
+                self._delexicalized = ProductionRule(src=self.src,
+                                                     dst=ExactMatcher("###"),
+                                                     innermost_substitution=ExactMatcher("###"))
+            else:
+                self._delexicalized = self
+        return self._delexicalized
+
+    def __repr__(self):
+        if self.src:
+            return f"{self.src}\t->\t{self.dst}"
+        else:
+            return f"{self.dst}"
 
 
 class CognitiveWeight:
@@ -95,6 +122,14 @@ class CognitiveWeight:
 
 class AstNode:
     """The base class for all AST nodes."""
+
+    def __init__(self):
+        self.generating_rule = None
+        for child in self.children():
+            if child.generating_rule:
+                self.generating_rule = child.generating_rule
+                child.generating_rule = None
+        super().__init__()
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {str(self)!r}>"
@@ -155,15 +190,15 @@ class AstNode:
     def num_holes(self) -> int:
         """Returns the number of holes in this pattern."""
         return (
-            self.num_matcher_holes()
-            + self.num_constraint_holes()
-            + self.num_surface_holes()
-            + self.num_traversal_holes()
-            + self.num_query_holes()
+                self.num_matcher_holes()
+                + self.num_constraint_holes()
+                + self.num_surface_holes()
+                + self.num_traversal_holes()
+                + self.num_query_holes()
         )
 
     def expand_leftmost_hole(
-        self, vocabularies: Vocabularies, **kwargs
+            self, vocabularies: Vocabularies, **kwargs
     ) -> List[AstNode]:
         """
         If the pattern has holes then it returns the patterns obtained
@@ -173,12 +208,25 @@ class AstNode:
         # default implementation is suitable for Matchers only
         return []
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        return self
+
     def preorder_traversal(self) -> List[AstNode]:
         """Returns a list with all the nodes of the tree in preorder."""
         nodes = [self]
         for child in self.children():
             nodes += child.preorder_traversal()
         return nodes
+
+    @property
+    def leftmost_hole(self) -> Optional[AstNode]:
+        """ Returns the leftmust hole in the subtree, if any """
+        for node in self.preorder_traversal():
+            if node.is_hole():
+                return node
+        return
 
     def permutations(self) -> List[AstNode]:
         """Returns all trees that are equivalent to this AstNode."""
@@ -406,6 +454,11 @@ class HoleMatcher(Matcher):
     def under_approximation(self):
         return None
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        return substitution
+
 
 class WildcardMatcher(Matcher):
     def __str__(self):
@@ -416,6 +469,7 @@ class WildcardMatcher(Matcher):
 class ExactMatcher(Matcher):
     def __init__(self, s: Text):
         self.string = s
+        super().__init__()
 
     def __str__(self):
         if is_identifier(self.string):
@@ -454,12 +508,21 @@ class HoleConstraint(Constraint):
         return 1
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
-        return [
+        candidates = [
             FieldConstraint(HoleMatcher(), HoleMatcher()),
             NotConstraint(HoleConstraint()),
             AndConstraint(HoleConstraint(), HoleConstraint()),
             OrConstraint(HoleConstraint(), HoleConstraint()),
         ]
+        if kwargs.get("track_generation", True):
+            for c in candidates:
+                c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c)
+        return candidates
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        return substitution
 
     def over_approximation(self):
         return WildcardConstraint()
@@ -474,6 +537,7 @@ class FieldConstraint(Constraint):
     def __init__(self, name: Matcher, value: Matcher):
         self.name = name
         self.value = value
+        super().__init__()
 
     def __str__(self):
         return f"{self.name}={self.value}"
@@ -485,19 +549,32 @@ class FieldConstraint(Constraint):
         return self.name.tokens() + ["="] + self.value.tokens()
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
+        candidates = []
         if self.name.is_hole():
-            return [
-                FieldConstraint(ExactMatcher(name), self.value)
-                for name in vocabularies
-                if name not in config.EXCLUDE_FIELDS
-            ]
+            for name in vocabularies:
+                if name not in config.EXCLUDE_FIELDS:
+                    c = FieldConstraint(ExactMatcher(name), self.value)
+                    candidates.append(c)
+                    if kwargs.get("track_productions", False):
+                        c.generating_rule = ProductionRule(src=self.name, dst=c.name, innermost_substitution=c.name)
+
         elif self.value.is_hole():
-            return [
-                FieldConstraint(self.name, ExactMatcher(value))
-                for value in vocabularies[self.name.string]
-            ]
+            for value in vocabularies[self.name.string]:
+                c = FieldConstraint(self.name, ExactMatcher(value))
+                candidates.append(c)
+                if kwargs.get("track_productions", False):
+                    c.generating_rule = ProductionRule(src=self.value, dst=c.value, innermost_substitution=c.value)
+        return candidates
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.name.has_holes():
+            return FieldConstraint(name=self.name.fill_leftmost_hole(substitution), value=self.value)
+        elif self.value.has_holes():
+            return FieldConstraint(name=self.name, value=self.value.fill_leftmost_hole(substitution))
         else:
-            return []
+            return self
 
     def over_approximation(self):
         name = self.name.over_approximation()
@@ -531,6 +608,7 @@ class NotConstraint(Constraint):
 
     def __init__(self, c: Constraint):
         self.constraint = c
+        super().__init__()
 
     def __str__(self):
         c = maybe_parens(self.constraint, (AndConstraint, OrConstraint))
@@ -544,11 +622,26 @@ class NotConstraint(Constraint):
             self.constraint, (AndConstraint, OrConstraint)
         )
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.has_holes():
+            return NotConstraint(c=self.constraint.fill_leftmost_hole(substitution))
+        else:
+            return self
+
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         # get the next nodes for the nested constraint
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
-        # avoid nesting negations
-        return [NotConstraint(n) for n in nodes if not isinstance(n, NotConstraint)]
+        candidates = []
+        for n in nodes:
+            # avoid nesting negations
+            if not isinstance(n, NotConstraint):
+                c = NotConstraint(n)
+                candidates.append(c)
+                # if kwargs.get("track_productions", False):
+                #     c.generating_rule = ProductionRule(src=self.constraint, dst=n, innermost_substitution=n)
+        return candidates
 
     def permutations(self):
         return [NotConstraint(p) for p in self.constraint.permutations()]
@@ -576,6 +669,7 @@ class AndConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         return f"{self.lhs} & {self.rhs}"
@@ -632,6 +726,7 @@ class OrConstraint(Constraint):
     def __init__(self, lhs: Constraint, rhs: Constraint):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
@@ -651,6 +746,16 @@ class OrConstraint(Constraint):
             return [OrConstraint(self.lhs, n) for n in nodes]
         else:
             return []
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.lhs.has_holes():
+            return OrConstraint(self.lhs.fill_leftmost_hole(substitution), self.rhs)
+        elif self.rhs.has_holes():
+            return OrConstraint(self.lhs, self.rhs.fill_leftmost_hole(substitution))
+        else:
+            return self
 
     def permutations(self):
         return get_all_trees(self)
@@ -691,6 +796,7 @@ class Surface(AstNode):
 
 
 class HoleSurface(Surface):
+
     def __str__(self):
         return config.SURFACE_HOLE_GLYPH
 
@@ -707,8 +813,8 @@ class HoleSurface(Surface):
         if kwargs.get("allow_surface_wildcards", True):
             candidates.append(WildcardSurface())
         if (
-            kwargs.get("allow_surface_mentions", True)
-            and config.ENTITY_FIELD in vocabularies
+                kwargs.get("allow_surface_mentions", True)
+                and config.ENTITY_FIELD in vocabularies
         ):
             candidates.append(MentionSurface(HoleMatcher()))
         if kwargs.get("allow_surface_alternations", True):
@@ -721,8 +827,15 @@ class HoleSurface(Surface):
                 RepeatSurface(HoleSurface(), 0, None),
                 RepeatSurface(HoleSurface(), 1, None),
             ]
+        if kwargs.get("track_productions", False):
+            for c in candidates:
+                c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c)
         return candidates
 
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        return substitution
     def over_approximation(self):
         return RepeatSurface(WildcardSurface(), 0, None)
 
@@ -745,6 +858,7 @@ class TokenSurface(Surface):
 
     def __init__(self, c: Constraint):
         self.constraint = c
+        super().__init__()
 
     def __str__(self):
         return f"[{self.constraint}]"
@@ -758,6 +872,14 @@ class TokenSurface(Surface):
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         nodes = self.constraint.expand_leftmost_hole(vocabularies, **kwargs)
         return [TokenSurface(n) for n in nodes]
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.constraint.has_holes():
+            return TokenSurface(self.constraint.fill_leftmost_hole(substitution))
+        else:
+            return self
 
     def permutations(self):
         return [TokenSurface(p) for p in self.constraint.permutations()]
@@ -790,6 +912,7 @@ class MentionSurface(Surface):
 
     def __init__(self, label: Matcher):
         self.label = label
+        super().__init__()
 
     def __str__(self):
         return f"@{self.label}"
@@ -802,7 +925,11 @@ class MentionSurface(Surface):
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
         entities = vocabularies.get(config.ENTITY_FIELD, [])
-        return [MentionSurface(ExactMatcher(e)) for e in entities]
+        candidates = [MentionSurface(ExactMatcher(e)) for e in entities]
+        if kwargs.get("track_productions", False):
+            for c in candidates:
+                c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c.label)
+        return candidates
 
 
 class ConcatSurface(Surface):
@@ -811,6 +938,7 @@ class ConcatSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         lhs = maybe_parens(self.lhs, OrSurface)
@@ -827,14 +955,24 @@ class ConcatSurface(Surface):
         return tokens
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
+        candidates = []
         if self.lhs.has_holes():
             nodes = self.lhs.expand_leftmost_hole(vocabularies, **kwargs)
-            return [ConcatSurface(n, self.rhs) for n in nodes]
+            candidates = [ConcatSurface(n, self.rhs) for n in nodes]
         elif self.rhs.has_holes():
             nodes = self.rhs.expand_leftmost_hole(vocabularies, **kwargs)
-            return [ConcatSurface(self.lhs, n) for n in nodes]
+            candidates = [ConcatSurface(self.lhs, n) for n in nodes]
+        return candidates
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.lhs.has_holes():
+            return ConcatSurface(self.lhs.fill_leftmost_hole(substitution), self.rhs)
+        elif self.rhs.has_holes():
+            return ConcatSurface(self.lhs, self.rhs.fill_leftmost_hole(substitution))
         else:
-            return []
+            return self
 
     def permutations(self):
         return get_all_trees(self)
@@ -875,6 +1013,7 @@ class OrSurface(Surface):
     def __init__(self, lhs: Surface, rhs: Surface):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
@@ -894,6 +1033,16 @@ class OrSurface(Surface):
             return [OrSurface(self.lhs, n) for n in nodes]
         else:
             return []
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.lhs.has_holes():
+            return OrSurface(self.lhs.fill_leftmost_hole(substitution), self.rhs)
+        elif self.rhs.has_holes():
+            return OrSurface(self.lhs, self.rhs.fill_leftmost_hole(substitution))
+        else:
+            return self
 
     def permutations(self):
         return get_all_trees(self)
@@ -930,6 +1079,7 @@ class RepeatSurface(Surface):
         self.surf = surf
         self.min = min
         self.max = max
+        super().__init__()
 
     def __str__(self):
         surf = maybe_parens(self.surf, (ConcatSurface, OrSurface))
@@ -953,6 +1103,12 @@ class RepeatSurface(Surface):
         # avoid nesting repetitions
         nodes = [n for n in nodes if not isinstance(n, RepeatSurface)]
         return [RepeatSurface(n, self.min, self.max) for n in nodes]
+
+    def fill_leftmost_hole(
+            self, substitution: AstNode, **kwargs
+    ) -> AstNode:
+        if self.surf.has_holes():
+            return RepeatSurface(self.surf.fill_leftmost_hole(substitution), self.min, self.max)
 
     def permutations(self):
         return [RepeatSurface(p, self.min, self.max) for p in self.surf.permutations()]
@@ -1019,6 +1175,9 @@ class HoleTraversal(Traversal):
                 RepeatTraversal(HoleTraversal(), 0, None),
                 RepeatTraversal(HoleTraversal(), 1, None),
             ]
+        if kwargs.get("track_generation", True):
+            for c in candidates:
+                c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c)
         return candidates
 
     def over_approximation(self):
@@ -1051,6 +1210,7 @@ class IncomingLabelTraversal(Traversal):
 
     def __init__(self, label: Matcher):
         self.label = label
+        super().__init__()
 
     def __str__(self):
         return f"<{self.label}"
@@ -1092,6 +1252,7 @@ class OutgoingLabelTraversal(Traversal):
 
     def __init__(self, label: Matcher):
         self.label = label
+        super().__init__()
 
     def __str__(self):
         return f">{self.label}"
@@ -1134,6 +1295,7 @@ class ConcatTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         lhs = maybe_parens(self.lhs, OrTraversal)
@@ -1198,6 +1360,7 @@ class OrTraversal(Traversal):
     def __init__(self, lhs: Traversal, rhs: Traversal):
         self.lhs = lhs
         self.rhs = rhs
+        super().__init__()
 
     def __str__(self):
         return f"{self.lhs} | {self.rhs}"
@@ -1253,6 +1416,7 @@ class RepeatTraversal(Traversal):
         self.traversal = traversal
         self.min = min
         self.max = max
+        super().__init__()
 
     def __str__(self):
         traversal = maybe_parens(self.traversal, (ConcatTraversal, OrTraversal))
@@ -1325,10 +1489,14 @@ class HoleQuery(Query):
         return 1
 
     def expand_leftmost_hole(self, vocabularies, **kwargs):
-        return [
+        candidates = [
             HoleSurface(),
             HybridQuery(HoleSurface(), HoleTraversal(), HoleQuery()),
         ]
+        if kwargs.get("track_generation", True):
+            for c in candidates:
+                c.generating_rule = ProductionRule(src=self, dst=c, innermost_substitution=c)
+        return candidates
 
     def over_approximation(self):
         raise NotImplementedError()
@@ -1344,6 +1512,7 @@ class HybridQuery(Query):
         self.src = src
         self.dst = dst
         self.traversal = traversal
+        super().__init__()
 
     def __str__(self):
         src = maybe_parens(self.src, OrSurface)
